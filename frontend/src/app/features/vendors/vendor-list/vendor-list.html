@@ -1,191 +1,423 @@
-<div class="vendor-page">
+<div class="vendor-canvas">
 
-  <header class="page-header">
-    <div class="page-title-group">
-      <span class="eyebrow">PROCUREMENT</span>
-      <h1>Vendor Management</h1>
-      <p>Manage your supplier directory, status and procurement relationships.</p>
-    </div>
+  <!-- BACKGROUND AMBIENT GLOWS (CSS-ONLY DECORATIVE) -->
+  <div class="ambient-glow glow-top-left" aria-hidden="true"></div>
+  <div class="ambient-glow glow-top-right" aria-hidden="true"></div>
+  <div class="ambient-glow glow-bottom-center" aria-hidden="true"></div>
 
-    <button type="button" class="primary-button" (click)="addVendor()">
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <line x1="12" y1="5" x2="12" y2="19"></line>
-        <line x1="5" y1="12" x2="19" y2="12"></line>
-      </svg>
-      Add Vendor
-    </button>
-  </header>
+  <div class="vendor-container">
 
-  <section class="summary-row" aria-label="Vendor summary">
-    <div class="summary-card">
-      <span>Total Vendors</span>
-      <strong>{{ vendors.length }}</strong>
-    </div>
-
-    <div class="summary-card">
-      <span>Active Vendors</span>
-      <strong>{{ activeCount }}</strong>
-    </div>
-
-    <div class="summary-card">
-      <span>Pending Review</span>
-      <strong>{{ pendingCount }}</strong>
-    </div>
-  </section>
-
-  <section class="vendor-card">
-
-    <div class="table-toolbar">
-      <div>
-        <h2>Supplier Directory</h2>
-        <p>{{ filteredVendors.length }} vendor{{ filteredVendors.length === 1 ? '' : 's' }} displayed</p>
+    <!-- 1. PAGE HEADER (MATCHING DASHBOARD HEADER) -->
+    <header class="page-header">
+      <div class="header-greeting-block">
+        <span class="eyebrow">PROCUREMENT / SUPPLIER DIRECTORY</span>
+        <h1 class="page-title">Vendor Management</h1>
+        <p class="page-subtitle">
+          Manage your supplier directory, operational status, and procurement relationships.
+        </p>
       </div>
 
-      <div class="toolbar-controls">
-        <div class="search-box">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="11" cy="11" r="7"></circle>
-            <line x1="16.5" y1="16.5" x2="21" y2="21"></line>
-          </svg>
-
-          <input
-            type="text"
-            [(ngModel)]="searchTerm"
-            placeholder="Search vendors..."
-            aria-label="Search vendors"
-          />
+      <div class="header-controls">
+        <div class="live-sync-pill" title="Live PostgreSQL Data Stream">
+          <span class="pulse-dot"></span>
+          <span class="sync-caption">PostgreSQL Live: <strong>{{ vendors.length }} Vendors</strong></span>
         </div>
 
-        <select
-          class="status-filter"
-          [(ngModel)]="statusFilter"
-          aria-label="Filter vendors by status"
+        <button
+          type="button"
+          class="btn-saas-action btn-refresh"
+          (click)="loadVendors()"
+          [disabled]="loading"
+          title="Synchronize vendor records"
         >
-          <option value="all">All Status</option>
-          <option value="active">Active</option>
-          <option value="pending">Pending</option>
-          <option value="inactive">Inactive</option>
-          <option value="approved">Approved</option>
-        </select>
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" [class.spinning]="loading">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+          </svg>
+          <span>{{ loading ? 'Updating...' : 'Refresh' }}</span>
+        </button>
+
+        <button
+          type="button"
+          class="btn-saas-action btn-primary-cta"
+          (click)="addVendor()"
+        >
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <span>Add Vendor</span>
+        </button>
       </div>
+    </header>
+
+    <!-- ERROR NOTIFICATION BANNER -->
+    <div *ngIf="errorMessage" class="error-banner">
+      <div class="error-content">
+        <span class="error-badge">!</span>
+        <div class="error-text">
+          <strong>Data Synchronization Notice</strong>
+          <p>{{ errorMessage }}</p>
+        </div>
+      </div>
+      <button type="button" class="btn-retry" (click)="loadVendors()">Retry Sync</button>
     </div>
 
-    <div class="table-wrapper" *ngIf="filteredVendors.length > 0">
-      <table>
-        <thead>
-          <tr>
-            <th>VENDOR</th>
-            <th>COMPANY</th>
-            <th>CONTACT</th>
-            <th>CATEGORY</th>
-            <th>STATUS</th>
-            <th class="actions-column">ACTIONS</th>
-          </tr>
-        </thead>
+    <!-- 2. KPI METRIC STRIP (MATCHING DASHBOARD KPI CARDS) -->
+    <section class="vendor-kpi-grid" aria-label="Vendor summary metrics">
 
-        <tbody>
-          <tr *ngFor="let vendor of filteredVendors">
-            <td>
-              <div class="vendor-cell">
-                <div class="vendor-avatar">
-                  {{ getInitials(vendor.vendor_name) }}
-                </div>
-
-                <div>
-                  <div class="vendor-name">
-                    {{ vendor.vendor_name || 'Unnamed Vendor' }}
-                  </div>
-                  <div class="vendor-id">
-                    ID #{{ vendor.id }}
-                  </div>
-                </div>
-              </div>
-            </td>
-
-            <td>
-              <span class="company-name">
-                {{ vendor.company_name || '—' }}
-              </span>
-            </td>
-
-            <td>
-              <div class="contact-cell">
-                <span>{{ vendor.email || '—' }}</span>
-                <small>{{ vendor.phone || 'No phone provided' }}</small>
-              </div>
-            </td>
-
-            <td>
-              <span class="category-text">
-                {{ vendor.category || 'Uncategorized' }}
-              </span>
-            </td>
-
-            <td>
-              <span
-                class="status-pill"
-                [ngClass]="getStatusClass(vendor.status)"
-              >
-                <span class="status-dot"></span>
-                {{ vendor.status || 'Unknown' }}
-              </span>
-            </td>
-
-            <td class="actions-column">
-              <div class="row-actions">
-                <button
-                  type="button"
-                  class="action-button edit"
-                  (click)="editVendor(vendor.id!)"
-                  aria-label="Edit vendor"
-                >
-                  Edit
-                </button>
-
-                <button
-                  type="button"
-                  class="action-button delete"
-                  (click)="deleteVendor(vendor.id!)"
-                  aria-label="Delete vendor"
-                >
-                  Delete
-                </button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div class="empty-state" *ngIf="filteredVendors.length === 0">
-      <div class="empty-icon">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
-          <circle cx="9" cy="7" r="4"></circle>
-          <line x1="17" y1="11" x2="22" y2="11"></line>
-        </svg>
+      <!-- Total Registered Vendors -->
+      <div class="saas-card ref-kpi-card kpi-cyan">
+        <div class="kpi-accent-bar cyan"></div>
+        <div class="kpi-content-box">
+          <span class="ref-kpi-label">Total Registered Vendors</span>
+          <div class="ref-metric-val">{{ vendors.length }}</div>
+          <div class="ref-trend-wrap">
+            <span class="ref-metric-trend trend-blue">Live Database</span>
+          </div>
+        </div>
+        <div class="ref-ring-container">
+          <svg viewBox="0 0 36 36" class="ref-ring-svg">
+            <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            <path class="ring-stroke stroke-cyan" stroke-dasharray="100, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+          </svg>
+          <span class="ring-center-text">{{ vendors.length }}</span>
+        </div>
       </div>
 
-      <h3>{{ vendors.length === 0 ? 'No vendors registered' : 'No vendors found' }}</h3>
+      <!-- Active Suppliers -->
+      <div class="saas-card ref-kpi-card kpi-green">
+        <div class="kpi-accent-bar green"></div>
+        <div class="kpi-content-box">
+          <span class="ref-kpi-label">Active Suppliers</span>
+          <div class="ref-metric-val">{{ activeCount }}</div>
+          <div class="ref-trend-wrap">
+            <span class="ref-metric-trend trend-green">Approved for POs</span>
+          </div>
+        </div>
+        <div class="ref-ring-container">
+          <svg viewBox="0 0 36 36" class="ref-ring-svg">
+            <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            <path
+              class="ring-stroke stroke-green"
+              [attr.stroke-dasharray]="((activeCount / (vendors.length || 1)) * 100) + ', 100'"
+              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+            />
+          </svg>
+          <span class="ring-center-text">{{ activeCount }}</span>
+        </div>
+      </div>
 
-      <p>
-        {{
-          vendors.length === 0
-            ? 'Start building your supplier directory by adding your first vendor.'
-            : 'Try adjusting your search or status filter.'
-        }}
-      </p>
+      <!-- Pending Review -->
+      <div class="saas-card ref-kpi-card kpi-amber">
+        <div class="kpi-accent-bar amber"></div>
+        <div class="kpi-content-box">
+          <span class="ref-kpi-label">Pending Review</span>
+          <div class="ref-metric-val">{{ pendingCount }}</div>
+          <div class="ref-trend-wrap">
+            <span class="ref-metric-trend trend-amber">Awaiting Approval</span>
+          </div>
+        </div>
+        <div class="ref-ring-container">
+          <svg viewBox="0 0 36 36" class="ref-ring-svg">
+            <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            <path
+              class="ring-stroke stroke-amber"
+              [attr.stroke-dasharray]="((pendingCount / (vendors.length || 1)) * 100) + ', 100'"
+              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+            />
+          </svg>
+          <span class="ring-center-text">{{ pendingCount }}</span>
+        </div>
+      </div>
 
-      <button
-        *ngIf="vendors.length === 0"
-        type="button"
-        class="primary-button empty-action"
-        (click)="addVendor()"
-      >
-        Add First Vendor
-      </button>
+    </section>
+
+    <!-- 3. SUPPLIER DIRECTORY WORKSPACE CARD -->
+    <section class="saas-card table-section-card">
+
+      <div class="card-head-row">
+        <div class="card-title-group">
+          <h2 class="card-main-title">Supplier Intelligence Directory</h2>
+          <span class="card-subtitle-tag">{{ filteredVendors.length }} supplier(s) matching catalog filters</span>
+        </div>
+
+        <div class="toolbar-controls">
+          <div class="search-box">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="11" cy="11" r="7"></circle>
+              <line x1="16.5" y1="16.5" x2="21" y2="21"></line>
+            </svg>
+            <input
+              type="text"
+              [(ngModel)]="searchTerm"
+              placeholder="Search company, contact, category..."
+              aria-label="Search suppliers"
+            />
+          </div>
+
+          <select
+            class="status-filter-select"
+            [(ngModel)]="statusFilter"
+            aria-label="Filter vendors by status"
+          >
+            <option value="all">All Statuses</option>
+            <option value="active">Active</option>
+            <option value="pending">Pending</option>
+            <option value="inactive">Inactive</option>
+            <option value="rejected">Rejected</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Loading State -->
+      <div *ngIf="loading" class="loading-state">
+        <div class="loading-spinner"></div>
+        <p>Synchronizing live supplier records from PostgreSQL...</p>
+      </div>
+
+      <!-- Supplier Table -->
+      <div class="table-scroll-container" *ngIf="!loading && filteredVendors.length > 0">
+        <table class="reference-data-table">
+          <thead>
+            <tr>
+              <th>COMPANY & PRIMARY CONTACT</th>
+              <th>CATEGORY</th>
+              <th>COMMUNICATION</th>
+              <th>REGISTERED LOCATION</th>
+              <th>OPERATIONAL STATUS</th>
+              <th class="cell-align-right">ACTIONS</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            <tr *ngFor="let vendor of filteredVendors">
+              <!-- Company & Contact -->
+              <td>
+                <div class="supplier-identity-cell">
+                  <div class="supplier-monogram-circle">
+                    {{ getInitials(vendor.company_name || vendor.contact_person) }}
+                  </div>
+                  <div class="supplier-text-stack">
+                    <strong class="supplier-name-strong">{{ vendor.company_name || 'Unnamed Company' }}</strong>
+                    <span class="supplier-email-span">
+                      Contact: {{ vendor.contact_person || '—' }} • #{{ vendor.id }}
+                    </span>
+                  </div>
+                </div>
+              </td>
+
+              <!-- Category -->
+              <td>
+                <span class="category-pill-badge">
+                  {{ vendor.category || 'General' }}
+                </span>
+              </td>
+
+              <!-- Communication -->
+              <td>
+                <div class="contact-meta-cell">
+                  <span class="contact-email">{{ vendor.email || '—' }}</span>
+                  <small class="contact-phone">{{ vendor.phone || 'No phone' }}</small>
+                </div>
+              </td>
+
+              <!-- Location / Address -->
+              <td>
+                <div class="location-cell" [title]="vendor.address || ''">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" class="location-icon">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                    <circle cx="12" cy="10" r="3"></circle>
+                  </svg>
+                  <span>{{ vendor.address || '—' }}</span>
+                </div>
+              </td>
+
+              <!-- Status -->
+              <td>
+                <span
+                  class="status-pill-badge"
+                  [ngClass]="getStatusClass(vendor.status)"
+                >
+                  <span class="status-dot"></span>
+                  {{ vendor.status || 'Pending' }}
+                </span>
+              </td>
+
+              <!-- Actions -->
+              <td class="cell-align-right">
+                <div class="row-actions-group">
+                  <button
+                    type="button"
+                    class="btn-table-action btn-inspect"
+                    (click)="viewDetails(vendor)"
+                    title="Inspect vendor details"
+                  >
+                    Inspect
+                  </button>
+
+                  <button
+                    type="button"
+                    class="btn-table-action btn-edit"
+                    (click)="editVendor(vendor.id!)"
+                    title="Edit vendor profile"
+                  >
+                    Edit
+                  </button>
+
+                  <button
+                    type="button"
+                    class="btn-table-action btn-delete"
+                    (click)="deleteVendor(vendor.id!)"
+                    title="Delete vendor record"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Empty State -->
+      <div class="empty-state-card" *ngIf="!loading && filteredVendors.length === 0">
+        <div class="empty-icon-pod">
+          <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+          </svg>
+        </div>
+
+        <strong class="empty-title">
+          {{ vendors.length === 0 ? 'No Suppliers Registered Yet' : 'No Matching Suppliers Found' }}
+        </strong>
+
+        <p class="empty-desc">
+          {{
+            vendors.length === 0
+              ? 'Start building your enterprise supplier directory by registering your first vendor.'
+              : 'Try adjusting your search criteria or status filter.'
+          }}
+        </p>
+
+        <button
+          *ngIf="vendors.length === 0"
+          type="button"
+          class="btn-saas-action btn-primary-cta"
+          (click)="addVendor()"
+        >
+          Add First Vendor
+        </button>
+      </div>
+
+    </section>
+
+  </div>
+
+  <!-- 4. VENDOR DETAILS MODAL / DRAWER -->
+  <div class="modal-overlay" *ngIf="selectedVendor" (click)="closeDetails()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-header-info">
+          <span class="eyebrow">SUPPLIER INTELLIGENCE DOSSIER</span>
+          <h2>{{ selectedVendor.company_name }}</h2>
+          <p>ID #{{ selectedVendor.id }} • {{ selectedVendor.category }}</p>
+        </div>
+        <button type="button" class="close-btn" (click)="closeDetails()" title="Close details">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="detail-grid">
+          <div class="detail-item">
+            <span class="detail-label">Legal Company Name</span>
+            <span class="detail-value">{{ selectedVendor.company_name }}</span>
+          </div>
+
+          <div class="detail-item">
+            <span class="detail-label">Primary Contact Person</span>
+            <span class="detail-value">{{ selectedVendor.contact_person || '—' }}</span>
+          </div>
+
+          <div class="detail-item">
+            <span class="detail-label">Business Email</span>
+            <span class="detail-value">{{ selectedVendor.email }}</span>
+          </div>
+
+          <div class="detail-item">
+            <span class="detail-label">Phone Number</span>
+            <span class="detail-value">{{ selectedVendor.phone || '—' }}</span>
+          </div>
+
+          <div class="detail-item">
+            <span class="detail-label">Procurement Category</span>
+            <span class="detail-value">{{ selectedVendor.category }}</span>
+          </div>
+
+          <div class="detail-item">
+            <span class="detail-label">Current Operational Status</span>
+            <span class="status-pill-badge" [ngClass]="getStatusClass(selectedVendor.status)">
+              <span class="status-dot"></span>
+              {{ selectedVendor.status || 'Pending' }}
+            </span>
+          </div>
+
+          <div class="detail-item full-width">
+            <span class="detail-label">Registered Business Address</span>
+            <span class="detail-value address-box">{{ selectedVendor.address || 'No registered address provided' }}</span>
+          </div>
+        </div>
+
+        <div class="status-management-box">
+          <h3>Operational Status Management</h3>
+          <p>Update supplier operational readiness for purchase orders.</p>
+          <div class="status-btn-group">
+            <button
+              type="button"
+              class="status-action-btn btn-activate"
+              [disabled]="actionLoading || selectedVendor.status === 'Active'"
+              (click)="changeStatus(selectedVendor, 'Active')"
+            >
+              ✓ Set Active
+            </button>
+
+            <button
+              type="button"
+              class="status-action-btn btn-pending"
+              [disabled]="actionLoading || selectedVendor.status === 'Pending'"
+              (click)="changeStatus(selectedVendor, 'Pending')"
+            >
+              ⏳ Set Pending
+            </button>
+
+            <button
+              type="button"
+              class="status-action-btn btn-inactive"
+              [disabled]="actionLoading || selectedVendor.status === 'Inactive'"
+              (click)="changeStatus(selectedVendor, 'Inactive')"
+            >
+              ⏸ Set Inactive
+            </button>
+
+            <button
+              type="button"
+              class="status-action-btn btn-reject"
+              [disabled]="actionLoading || selectedVendor.status === 'Rejected'"
+              (click)="changeStatus(selectedVendor, 'Rejected')"
+            >
+              ✕ Reject
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-modal-subtle" (click)="closeDetails()">Close</button>
+        <button type="button" class="btn-modal-primary" (click)="editVendor(selectedVendor.id!)">Edit Profile</button>
+      </div>
     </div>
-
-  </section>
+  </div>
 
 </div>

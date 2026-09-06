@@ -15,6 +15,10 @@ class PurchaseOrderCreate(BaseModel):
 
 
 class PurchaseOrderUpdate(BaseModel):
+    po_number: Optional[str] = None
+    procurement_id: Optional[int] = None
+    vendor_id: Optional[int] = None
+    order_date: Optional[date] = None
     expected_delivery: Optional[date] = None
     total_amount: Optional[float] = None
     status: Optional[str] = None
@@ -28,11 +32,11 @@ class PurchaseOrderResponse(BaseModel):
     procurement_id: int
     vendor_id: int
     order_date: date
-    expected_delivery: Optional[date]
+    expected_delivery: Optional[date] = None
     total_amount: float
     status: str
     payment_status: str
-    remarks: Optional[str]
+    remarks: Optional[str] = None
 
     class Config:
         from_attributes = True

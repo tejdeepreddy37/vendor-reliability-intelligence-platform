@@ -1,97 +1,460 @@
-<div class="container">
+<div class="reports-page">
 
-    <div class="header">
-
-        <h2>Reports & Analytics</h2>
-
-        <div class="actions">
-
-            <button class="pdf-btn"
-                (click)="exportPDF()">
-
-                Export PDF
-
-            </button>
-
-            <button class="excel-btn"
-                (click)="exportExcel()">
-
-                Export Excel
-
-            </button>
-
-        </div>
-
+  <header class="page-header">
+    <div class="page-title-group">
+      <span class="eyebrow">PROCUREMENT INTELLIGENCE & AUDITING</span>
+      <h1>Executive Reports & Procurement Analytics</h1>
+      <p>Multi-domain procurement analytics derived from real PostgreSQL records across vendors, purchase orders, contracts, and risk intelligence.</p>
     </div>
 
-    <div class="cards">
+    <div class="header-actions">
+      <button type="button" class="secondary-button" (click)="navigateToList()" title="View report history">
+        <svg viewBox="0 0 24 24" class="btn-icon" aria-hidden="true">
+          <line x1="8" y1="6" x2="21" y2="6"></line>
+          <line x1="8" y1="12" x2="21" y2="12"></line>
+          <line x1="8" y1="18" x2="21" y2="18"></line>
+          <line x1="3" y1="6" x2="3.01" y2="6"></line>
+          <line x1="3" y1="12" x2="3.01" y2="12"></line>
+          <line x1="3" y1="18" x2="3.01" y2="18"></line>
+        </svg>
+        <span>Report History</span>
+      </button>
 
-        <div class="card blue">
-            <h3>Total Reports</h3>
-            <h1>{{summary.totalReports}}</h1>
-        </div>
+      <button type="button" class="secondary-button" (click)="loadData()" [disabled]="loading" title="Refresh metrics">
+        <svg viewBox="0 0 24 24" class="btn-icon" aria-hidden="true">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+        </svg>
+        <span>{{ loading ? 'Refreshing...' : 'Refresh' }}</span>
+      </button>
 
-        <div class="card green">
-            <h3>Total Vendors</h3>
-            <h1>{{summary.totalVendors}}</h1>
-        </div>
-
-        <div class="card orange">
-            <h3>Purchase Orders</h3>
-            <h1>{{summary.purchaseOrders}}</h1>
-        </div>
-
-        <div class="card purple">
-            <h3>Active Contracts</h3>
-            <h1>{{summary.activeContracts}}</h1>
-        </div>
-
-        <div class="card red">
-            <h3>High Risk Vendors</h3>
-            <h1>{{summary.highRiskVendors}}</h1>
-        </div>
-
-        <div class="card cyan">
-            <h3>Average Reliability</h3>
-            <h1>{{summary.averageReliability}}%</h1>
-        </div>
-
+      <button type="button" class="primary-button" (click)="generateReport()" [disabled]="generating">
+        <span *ngIf="generating" class="button-spinner"></span>
+        <svg *ngIf="!generating" viewBox="0 0 24 24" class="btn-icon" aria-hidden="true">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+        </svg>
+        <span>{{ generating ? 'Generating...' : 'Generate Report' }}</span>
+      </button>
     </div>
+  </header>
 
-    <div class="table-card">
+  <!-- Notification banners -->
+  <div *ngIf="errorMessage" class="error-banner">
+    <span>⚠️</span>
+    <span>{{ errorMessage }}</span>
+    <button type="button" class="retry-btn" (click)="loadData()">Retry</button>
+  </div>
 
-        <h3>Recent Reports</h3>
+  <div *ngIf="successMessage" class="success-banner">
+    <span>✓</span>
+    <span>{{ successMessage }}</span>
+  </div>
 
-        <table>
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-state">
+    <div class="loading-spinner"></div>
+    <p>Aggregating procurement metrics from PostgreSQL database...</p>
+  </div>
 
-            <thead>
+  <ng-container *ngIf="!loading && summary">
 
-                <tr>
+    <!-- Executive KPI Row -->
+    <section class="summary-row" aria-label="Executive procurement summary metrics">
+      <div class="summary-card spend-card">
+        <div class="card-head">
+          <span class="summary-label">Total Procurement Spend</span>
+          <div class="kpi-mini-icon blue">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="1" x2="12" y2="23"></line>
+              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+            </svg>
+          </div>
+        </div>
+        <strong class="summary-val">{{ summary.total_procurement_value | currency:'USD':'symbol':'1.0-0' }}</strong>
+        <small class="summary-meta">{{ summary.total_purchase_orders }} total purchase orders</small>
+      </div>
 
-                    <th>Report Name</th>
-                    <th>Category</th>
-                    <th>Generated On</th>
+      <div class="summary-card vendor-card">
+        <div class="card-head">
+          <span class="summary-label">Active Vendor Network</span>
+          <div class="kpi-mini-icon green">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+          </div>
+        </div>
+        <strong class="summary-val">{{ summary.active_vendors }} / {{ summary.total_vendors }}</strong>
+        <small class="summary-meta">{{ summary.pending_vendors }} pending onboarding</small>
+      </div>
 
-                </tr>
+      <div class="summary-card contract-card">
+        <div class="card-head">
+          <span class="summary-label">Contract Portfolio Value</span>
+          <div class="kpi-mini-icon purple">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+            </svg>
+          </div>
+        </div>
+        <strong class="summary-val">{{ summary.total_contract_value | currency:'USD':'symbol':'1.0-0' }}</strong>
+        <small class="summary-meta">{{ summary.active_contracts }} active agreements</small>
+      </div>
 
-            </thead>
+      <div class="summary-card reliability-card">
+        <div class="card-head">
+          <span class="summary-label">Portfolio Reliability</span>
+          <div class="kpi-mini-icon amber">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+          </div>
+        </div>
+        <strong class="summary-val">{{ (summary.overall_reliability_score || summary.average_performance) | number:'1.1-1' }}%</strong>
+        <small class="summary-meta">Engine calculated index</small>
+      </div>
 
-            <tbody>
+      <div class="summary-card risk-card">
+        <div class="card-head">
+          <span class="summary-label">High Risk Exposure</span>
+          <div class="kpi-mini-icon red">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+              <line x1="12" y1="9" x2="12" y2="13"></line>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+          </div>
+        </div>
+        <strong class="summary-val">{{ summary.high_risk_vendors }}</strong>
+        <small class="summary-meta">{{ (summary.critical_risks || 0) + (summary.high_risks || 0) }} critical & high</small>
+      </div>
+    </section>
 
-                <tr *ngFor="let report of recentReports">
+    <!-- Multi-Domain Analytics Deep Dives -->
+    <section class="analytics-grid">
 
-                    <td>{{report.name}}</td>
+      <!-- Procurement & Purchase Order Analytics Card -->
+      <div class="analytics-card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <h3>Procurement & Purchase Order Analytics</h3>
+            <p>Fulfillment volume, total procurement commitments, and operational velocity</p>
+          </div>
+          <div class="card-export-group">
+            <button type="button" class="export-pill-btn" (click)="exportCategoryFile('Procurement', 'CSV')" [disabled]="exporting" title="Export as RFC-4180 CSV">CSV</button>
+            <button type="button" class="export-pill-btn" (click)="exportCategoryFile('Procurement', 'EXCEL')" [disabled]="exporting" title="Export as Excel (.xlsx)">Excel</button>
+            <button type="button" class="export-pill-btn" (click)="exportCategoryFile('Procurement', 'PDF')" [disabled]="exporting" title="Export as PDF Document">PDF</button>
+          </div>
+        </div>
 
-                    <td>{{report.type}}</td>
+        <div class="kpi-mini-grid">
+          <div class="mini-kpi">
+            <span class="mini-label">Total Purchase Orders</span>
+            <strong class="mini-val">{{ summary.total_purchase_orders }}</strong>
+          </div>
 
-                    <td>{{report.date}}</td>
+          <div class="mini-kpi">
+            <span class="mini-label">Total Order Value</span>
+            <strong class="mini-val">{{ summary.total_procurement_value | currency:'USD':'symbol':'1.0-0' }}</strong>
+          </div>
 
-                </tr>
+          <div class="mini-kpi">
+            <span class="mini-label">Avg Order Size</span>
+            <strong class="mini-val">
+              {{ summary.total_purchase_orders > 0 ? (summary.total_procurement_value / summary.total_purchase_orders | currency:'USD':'symbol':'1.0-0') : '$0' }}
+            </strong>
+          </div>
 
-            </tbody>
+          <div class="mini-kpi">
+            <span class="mini-label">Supplier Communications</span>
+            <strong class="mini-val">{{ summary.total_communications }}</strong>
+          </div>
+        </div>
 
+        <div class="card-footer-action">
+          <button type="button" class="text-link-btn" (click)="navigateToModule('/purchase-orders')">
+            Manage Purchase Orders →
+          </button>
+        </div>
+      </div>
+
+      <!-- Contract & Commitment Analytics Card -->
+      <div class="analytics-card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <h3>Contract Portfolio & Commitments</h3>
+            <p>Legal agreements, binding commitments, and portfolio values</p>
+          </div>
+          <div class="card-export-group">
+            <button type="button" class="export-pill-btn" (click)="exportCategoryFile('Contracts', 'CSV')" [disabled]="exporting" title="Export as RFC-4180 CSV">CSV</button>
+            <button type="button" class="export-pill-btn" (click)="exportCategoryFile('Contracts', 'EXCEL')" [disabled]="exporting" title="Export as Excel (.xlsx)">Excel</button>
+            <button type="button" class="export-pill-btn" (click)="exportCategoryFile('Contracts', 'PDF')" [disabled]="exporting" title="Export as PDF Document">PDF</button>
+          </div>
+        </div>
+
+        <div class="kpi-mini-grid">
+          <div class="mini-kpi">
+            <span class="mini-label">Active Contracts</span>
+            <strong class="mini-val">{{ summary.active_contracts }}</strong>
+          </div>
+
+          <div class="mini-kpi">
+            <span class="mini-label">Contract Portfolio Value</span>
+            <strong class="mini-val">{{ summary.total_contract_value | currency:'USD':'symbol':'1.0-0' }}</strong>
+          </div>
+
+          <div class="mini-kpi">
+            <span class="mini-label">Avg Contract Value</span>
+            <strong class="mini-val">
+              {{ summary.active_contracts > 0 ? (summary.total_contract_value / summary.active_contracts | currency:'USD':'symbol':'1.0-0') : '$0' }}
+            </strong>
+          </div>
+
+          <div class="mini-kpi">
+            <span class="mini-label">Status</span>
+            <strong class="mini-val text-success">Active Portfolio</strong>
+          </div>
+        </div>
+
+        <div class="card-footer-action">
+          <button type="button" class="text-link-btn" (click)="navigateToModule('/contracts')">
+            Manage Contracts →
+          </button>
+        </div>
+      </div>
+
+      <!-- Reliability & Dimension Scoring Card -->
+      <div class="analytics-card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <h3>Backend Reliability Engine Breakdown</h3>
+            <p>5-dimension algorithmic reliability scoring across active vendor performance</p>
+          </div>
+          <div class="card-export-group">
+            <button type="button" class="export-pill-btn" (click)="exportCategoryFile('Vendor Performance', 'CSV')" [disabled]="exporting" title="Export as RFC-4180 CSV">CSV</button>
+            <button type="button" class="export-pill-btn" (click)="exportCategoryFile('Vendor Performance', 'EXCEL')" [disabled]="exporting" title="Export as Excel (.xlsx)">Excel</button>
+            <button type="button" class="export-pill-btn" (click)="exportCategoryFile('Vendor Performance', 'PDF')" [disabled]="exporting" title="Export as PDF Document">PDF</button>
+          </div>
+        </div>
+
+        <div class="dimension-bars">
+          <div class="dim-row">
+            <div class="dim-info">
+              <span>On-Time Delivery Rate</span>
+              <strong>{{ (summary.average_delivery_score || 0) | number:'1.1-1' }}%</strong>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill" [style.width.%]="summary.average_delivery_score || 0"></div>
+            </div>
+          </div>
+
+          <div class="dim-row">
+            <div class="dim-info">
+              <span>Quality Assurance Rating</span>
+              <strong>{{ (summary.average_quality_score || 0) | number:'1.1-1' }}%</strong>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill" [style.width.%]="summary.average_quality_score || 0"></div>
+            </div>
+          </div>
+
+          <div class="dim-row">
+            <div class="dim-info">
+              <span>Order Fulfillment Rate</span>
+              <strong>{{ (summary.average_compliance_score || 0) | number:'1.1-1' }}%</strong>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill" [style.width.%]="summary.average_compliance_score || 0"></div>
+            </div>
+          </div>
+
+          <div class="dim-row">
+            <div class="dim-info">
+              <span>SLA Response Velocity</span>
+              <strong>{{ (summary.average_communication_score || 0) | number:'1.1-1' }}%</strong>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill" [style.width.%]="summary.average_communication_score || 0"></div>
+            </div>
+          </div>
+
+          <div class="dim-row">
+            <div class="dim-info">
+              <span>Risk & Compliance Stability</span>
+              <strong>{{ (summary.average_risk_score || 0) | number:'1.1-1' }}%</strong>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill" [style.width.%]="summary.average_risk_score || 0"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-footer-action">
+          <button type="button" class="text-link-btn" (click)="navigateToModule('/performance')">
+            View Supplier Scorecards →
+          </button>
+        </div>
+      </div>
+
+      <!-- Risk Intelligence & Incident Distribution Card -->
+      <div class="analytics-card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <h3>Risk Intelligence & Exposure</h3>
+            <p>Incident severity distributions and supplier vulnerabilities</p>
+          </div>
+          <div class="card-export-group">
+            <button type="button" class="export-pill-btn" (click)="exportCategoryFile('Risk', 'CSV')" [disabled]="exporting" title="Export as RFC-4180 CSV">CSV</button>
+            <button type="button" class="export-pill-btn" (click)="exportCategoryFile('Risk', 'EXCEL')" [disabled]="exporting" title="Export as Excel (.xlsx)">Excel</button>
+            <button type="button" class="export-pill-btn" (click)="exportCategoryFile('Risk', 'PDF')" [disabled]="exporting" title="Export as PDF Document">PDF</button>
+          </div>
+        </div>
+
+        <div class="risk-distribution-grid">
+          <div class="risk-metric-box critical-box">
+            <span class="risk-tag">Critical</span>
+            <strong class="risk-count">{{ summary.critical_risks || 0 }}</strong>
+            <small>Immediate containment</small>
+          </div>
+
+          <div class="risk-metric-box high-box">
+            <span class="risk-tag">High</span>
+            <strong class="risk-count">{{ summary.high_risks || 0 }}</strong>
+            <small>Elevated monitoring</small>
+          </div>
+
+          <div class="risk-metric-box medium-box">
+            <span class="risk-tag">Medium</span>
+            <strong class="risk-count">{{ summary.medium_risks || 0 }}</strong>
+            <small>Operational watch</small>
+          </div>
+
+          <div class="risk-metric-box low-box">
+            <span class="risk-tag">Low</span>
+            <strong class="risk-count">{{ summary.low_risks || 0 }}</strong>
+            <small>Routine audit</small>
+          </div>
+        </div>
+
+        <div class="card-footer-action">
+          <button type="button" class="text-link-btn" (click)="navigateToModule('/risk')">
+            Open Risk Intelligence →
+          </button>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Report Generation Toolbar & History Section -->
+    <section class="reports-section">
+
+      <div class="section-toolbar">
+        <div>
+          <h2>Generate Procurement Report</h2>
+          <p>Export authoritative PostgreSQL audit reports with real business metrics.</p>
+        </div>
+
+        <div class="generator-controls">
+          <select
+            class="control-select"
+            [(ngModel)]="selectedReportType"
+            aria-label="Select report type"
+          >
+            <option value="Procurement Summary">Procurement Summary</option>
+            <option value="Vendor Performance">Vendor Performance</option>
+            <option value="Contract Status">Contract Status</option>
+            <option value="Risk & Compliance">Risk & Compliance</option>
+            <option value="Executive Summary">Executive Summary</option>
+          </select>
+
+          <select
+            class="control-select"
+            [(ngModel)]="selectedFormat"
+            aria-label="Select format"
+          >
+            <option value="CSV">CSV Format</option>
+            <option value="EXCEL">Excel (.xlsx)</option>
+            <option value="PDF">PDF Document</option>
+          </select>
+
+          <button
+            type="button"
+            class="primary-button"
+            (click)="generateReport()"
+            [disabled]="generating"
+          >
+            <span *ngIf="generating" class="button-spinner"></span>
+            <span>{{ generating ? 'Generating...' : '⚡ Generate & Download' }}</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Recent Generated Reports Table -->
+      <div class="table-container">
+        <table class="report-table" *ngIf="recentReports.length > 0">
+          <thead>
+            <tr>
+              <th>Report Name</th>
+              <th>Category</th>
+              <th>Format</th>
+              <th>Generated By</th>
+              <th>Generated At</th>
+              <th>Status</th>
+              <th class="actions-col">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let report of recentReports">
+              <td class="name-cell">
+                <strong>{{ report.report_name }}</strong>
+              </td>
+              <td>
+                <span class="category-tag">{{ report.report_type }}</span>
+              </td>
+              <td>
+                <span class="format-badge">{{ report.file_format }}</span>
+              </td>
+              <td>{{ report.generated_by }}</td>
+              <td>{{ report.created_at ? (report.created_at | date:'medium') : 'Recent' }}</td>
+              <td>
+                <span class="status-pill status-generated">{{ report.status || 'Generated' }}</span>
+              </td>
+              <td class="actions-col">
+                <button
+                  type="button"
+                  class="action-btn download-btn"
+                  (click)="downloadReportFile(report, report.file_format)"
+                  [disabled]="exporting"
+                  title="Download File"
+                >
+                  Download {{ report.file_format }}
+                </button>
+                <button
+                  type="button"
+                  class="action-btn delete-btn"
+                  (click)="deleteReport($event, report.id!)"
+                  title="Delete record"
+                >
+                  ✕
+                </button>
+              </td>
+            </tr>
+          </tbody>
         </table>
 
-    </div>
+        <div class="empty-reports" *ngIf="recentReports.length === 0">
+          <p>No procurement reports generated yet. Click "Generate & Download" above to create an official CSV audit report from live PostgreSQL tables.</p>
+        </div>
+      </div>
+
+    </section>
+
+  </ng-container>
 
 </div>

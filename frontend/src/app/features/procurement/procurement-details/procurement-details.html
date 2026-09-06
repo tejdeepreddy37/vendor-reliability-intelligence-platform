@@ -1,9 +1,221 @@
-<div class="container mt-4">
+<div class="procurement-details-page">
 
-<h2>Procurement Details</h2>
+  <!-- BACKGROUND AMBIENT GLOWS -->
+  <div class="ambient-glow glow-top-left" aria-hidden="true"></div>
+  <div class="ambient-glow glow-top-right" aria-hidden="true"></div>
 
-<p>
-Details page under development.
-</p>
+  <div class="details-container">
+
+    <header class="details-header">
+      <div class="details-header-info">
+        <div class="eyebrow-row">
+          <span class="eyebrow">PROCUREMENT / REQUISITION MANAGEMENT</span>
+          <span *ngIf="procurement" class="status-pill" [ngClass]="getStatusClass(procurement.status)">
+            <span class="status-dot"></span>
+            {{ procurement.status || 'Pending' }}
+          </span>
+        </div>
+        <h1>{{ procurement ? procurement.title : 'Procurement Request Details' }}</h1>
+        <p *ngIf="procurement">Requisition #{{ procurement.request_number }} • Database Record ID #{{ procurement.id }}</p>
+      </div>
+
+      <div class="header-actions">
+        <button type="button" class="btn-saas-action btn-secondary" (click)="backToList()">
+          ← Back to Procurement
+        </button>
+
+        <button *ngIf="procurement" type="button" class="btn-saas-action btn-primary-cta" (click)="editProcurement()">
+          Edit Requisition
+        </button>
+      </div>
+    </header>
+
+    <!-- Error Banner -->
+    <div *ngIf="errorMessage" class="error-banner">
+      <div class="error-content">
+        <span class="error-badge">!</span>
+        <div class="error-text">
+          <strong>Notice</strong>
+          <p>{{ errorMessage }}</p>
+        </div>
+      </div>
+      <button type="button" class="btn-retry" (click)="backToList()">Back to List</button>
+    </div>
+
+    <!-- Loading State -->
+    <div *ngIf="loading" class="details-loading">
+      <div class="loading-spinner"></div>
+      <p>Loading procurement request record and supplier details...</p>
+    </div>
+
+    <div *ngIf="!loading && procurement" class="details-layout">
+
+      <!-- Left Column: Primary Details -->
+      <div class="main-column">
+
+        <!-- Valuation & Schedule Card -->
+        <section class="saas-card section-card">
+          <div class="card-header">
+            <h2>Requisition Valuation & Schedule</h2>
+          </div>
+
+          <div class="card-body">
+            <div class="kpi-banner">
+              <div class="kpi-item">
+                <span class="kpi-label">Total Estimated Amount</span>
+                <strong class="kpi-val currency-val">₹{{ procurement.total_amount | number:'1.2-2' }}</strong>
+                <small class="kpi-sub">Indian Rupee Commitment</small>
+              </div>
+
+              <div class="kpi-item">
+                <span class="kpi-label">Date Requested</span>
+                <strong class="kpi-date">{{ procurement.request_date | date:'longDate' }}</strong>
+              </div>
+
+              <div class="kpi-item">
+                <span class="kpi-label">Expected Delivery</span>
+                <strong class="kpi-date">{{ (procurement.expected_delivery | date:'longDate') || 'Standard Timeline' }}</strong>
+              </div>
+            </div>
+
+            <div *ngIf="procurement.description" class="terms-box">
+              <span class="terms-label">Requisition Scope & Specifications</span>
+              <p class="terms-text">{{ procurement.description }}</p>
+            </div>
+
+            <div *ngIf="procurement.remarks" class="terms-box remarks-box">
+              <span class="terms-label">Review Remarks</span>
+              <p class="terms-text">{{ procurement.remarks }}</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Associated Supplier Card -->
+        <section class="saas-card section-card">
+          <div class="card-header">
+            <h2>Associated Supplier Details</h2>
+            <span *ngIf="vendor?.status" class="vendor-status-pill">
+              {{ vendor?.status }}
+            </span>
+          </div>
+
+          <div class="card-body">
+            <div class="detail-grid" *ngIf="vendor; else noVendor">
+              <div class="detail-item">
+                <span class="detail-label">Legal Company Name</span>
+                <span class="detail-value highlight">{{ vendor.company_name }}</span>
+              </div>
+
+              <div class="detail-item">
+                <span class="detail-label">Contact Person</span>
+                <span class="detail-value">{{ vendor.contact_person || '—' }}</span>
+              </div>
+
+              <div class="detail-item">
+                <span class="detail-label">Business Email</span>
+                <span class="detail-value">{{ vendor.email }}</span>
+              </div>
+
+              <div class="detail-item">
+                <span class="detail-label">Phone Number</span>
+                <span class="detail-value">{{ vendor.phone || '—' }}</span>
+              </div>
+
+              <div class="detail-item">
+                <span class="detail-label">Category</span>
+                <span class="detail-value">{{ vendor.category }}</span>
+              </div>
+
+              <div class="detail-item full-width" *ngIf="vendor.address">
+                <span class="detail-label">Registered Business Address</span>
+                <span class="detail-value address-text">{{ vendor.address }}</span>
+              </div>
+            </div>
+
+            <ng-template #noVendor>
+              <div class="empty-sub">
+                <p>Vendor ID #{{ procurement.vendor_id }} is associated with this procurement request.</p>
+              </div>
+            </ng-template>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- Right Column: Operational Controls -->
+      <div class="side-column">
+
+        <!-- Authorization Meta -->
+        <section class="saas-card section-card">
+          <div class="card-header">
+            <h2>Authorization & Approvals</h2>
+          </div>
+
+          <div class="card-body">
+            <div class="auth-meta-stack">
+              <div class="auth-item">
+                <span class="auth-label">Initiating Officer</span>
+                <strong class="auth-val">{{ procurement.requested_by }}</strong>
+              </div>
+
+              <div class="auth-item">
+                <span class="auth-label">Approving Authority</span>
+                <strong class="auth-val">{{ procurement.approved_by || 'Pending Executive Review' }}</strong>
+              </div>
+
+              <div class="auth-item" *ngIf="procurement.invoice_number">
+                <span class="auth-label">Invoice Number</span>
+                <span class="auth-val font-mono">{{ procurement.invoice_number }}</span>
+              </div>
+            </div>
+
+            <div class="status-action-box">
+              <p class="section-desc">Requisition Decision Actions:</p>
+              <div class="action-buttons-stack">
+                <button
+                  type="button"
+                  class="status-btn btn-active"
+                  [disabled]="actionLoading || procurement.status === 'Approved'"
+                  (click)="approve()"
+                >
+                  ✓ Approve Requisition
+                </button>
+
+                <button
+                  type="button"
+                  class="status-btn btn-terminate"
+                  [disabled]="actionLoading || procurement.status === 'Rejected'"
+                  (click)="reject()"
+                >
+                  ✕ Reject Requisition
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Administration Zone -->
+        <section class="saas-card section-card danger-card">
+          <div class="card-header">
+            <h2>Procurement Administration</h2>
+          </div>
+
+          <div class="card-body">
+            <p class="danger-desc">Deleting this request permanently removes the requisition record from PostgreSQL.</p>
+            <button
+              type="button"
+              class="danger-button"
+              (click)="deleteProcurement()"
+            >
+              Delete Procurement Record
+            </button>
+          </div>
+        </section>
+
+      </div>
+
+    </div>
+
+  </div>
 
 </div>

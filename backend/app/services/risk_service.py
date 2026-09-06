@@ -5,6 +5,7 @@ from app.crud.risk import (
     create_risk,
     get_all_risks,
     get_risk_by_id,
+    get_risks_by_vendor,
     update_risk,
     delete_risk,
 )
@@ -56,6 +57,13 @@ def get_risk_by_id_service(
         )
 
     return risk
+
+
+def get_risks_by_vendor_service(
+    db: Session,
+    vendor_id: int,
+):
+    return get_risks_by_vendor(db, vendor_id)
 
 
 def update_risk_service(

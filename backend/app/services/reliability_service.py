@@ -24,10 +24,40 @@ def calculate_reliability(
     )
 
     if not performance:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Vendor performance data not found",
+        risks = (
+            db.query(Risk)
+            .filter(Risk.vendor_id == vendor_id)
+            .all()
         )
+
+        if risks:
+            total_impact = sum(
+                float(risk.impact_score or 0)
+                for risk in risks
+            )
+            risk_score = max(
+                0.0,
+                100.0 - min(total_impact * 5, 100.0),
+            )
+        else:
+            risk_score = 100.0
+
+        overall_score = round(risk_score * 0.10 + 70.0 * 0.90, 2)
+        risk_level = "LOW" if overall_score >= 80 else ("MEDIUM" if overall_score >= 60 else "HIGH")
+
+        return {
+            "vendor_id": vendor_id,
+            "delivery_score": 0.0,
+            "quality_score": 0.0,
+            "compliance_score": 0.0,
+            "communication_score": 0.0,
+            "risk_score": round(risk_score, 2),
+            "overall_reliability_score": overall_score,
+            "risk_level": risk_level,
+            "recommendations": [
+                "Awaiting initial performance cycle data. Baseline risk monitoring is active."
+            ],
+        }
 
     total_deliveries = (
         performance.on_time_deliveries

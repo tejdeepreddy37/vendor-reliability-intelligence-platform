@@ -1,111 +1,162 @@
-<div class="page">
+<div class="notif-form-page">
 
-    <div class="header">
-
-        <div>
-
-            <h1>Create Notification</h1>
-
-            <p>Send notifications to vendors and users</p>
-
-        </div>
-
+  <header class="page-header">
+    <div class="page-title-group">
+      <span class="eyebrow">SYSTEM & PROCUREMENT INTELLIGENCE</span>
+      <h1>Dispatch Procurement Alert</h1>
+      <p>Broadcast alerts regarding procurement milestones, vendor approvals, contract renewals, or delivery updates.</p>
     </div>
 
-    <div class="card">
-
-        <div class="grid">
-
-            <div class="field">
-
-                <label>Title</label>
-
-                <input
-                    type="text"
-                    [(ngModel)]="notification.title"
-                    name="title">
-
-            </div>
-
-            <div class="field">
-
-                <label>Recipient</label>
-
-                <input
-                    type="text"
-                    [(ngModel)]="notification.recipient"
-                    name="recipient">
-
-            </div>
-
-            <div class="field full">
-
-                <label>Message</label>
-
-                <textarea
-                    rows="6"
-                    [(ngModel)]="notification.message"
-                    name="message">
-
-                </textarea>
-
-            </div>
-
-            <div class="field">
-
-                <label>Notification Type</label>
-
-                <select
-                    [(ngModel)]="notification.notification_type"
-                    name="notification_type">
-
-                    <option value="">Select</option>
-                    <option>Email</option>
-                    <option>SMS</option>
-                    <option>System</option>
-
-                </select>
-
-            </div>
-
-            <div class="field">
-
-                <label>Status</label>
-
-                <select
-                    [(ngModel)]="notification.status"
-                    name="status">
-
-                    <option>Unread</option>
-                    <option>Read</option>
-
-                </select>
-
-            </div>
-
-        </div>
-
-        <div class="buttons">
-
-            <button
-                class="cancel"
-                routerLink="/notifications">
-
-                Cancel
-
-            </button>
-
-            <button
-                class="save"
-                (click)="saveNotification()"
-                [disabled]="isSaving">
-
-                {{isSaving ? 'Saving...' : 'Save Notification'}}
-
-            </button>
-
-        </div>
-
+    <div class="header-actions">
+      <button type="button" class="secondary-button" (click)="cancel()">
+        Cancel
+      </button>
     </div>
+  </header>
+
+  <!-- Error Banner -->
+  <div *ngIf="errorMessage" class="error-banner">
+    <span>⚠️</span>
+    <span>{{ errorMessage }}</span>
+  </div>
+
+  <div class="form-layout">
+
+    <!-- Main Form Card -->
+    <div class="form-card">
+      <form [formGroup]="notifForm" (ngSubmit)="onSubmit()">
+
+        <div class="form-section">
+          <h2 class="section-title">Alert Details & Dispatch Parameters</h2>
+          <p class="section-subtitle">Define the trigger subject, targeted audience, and notification classification.</p>
+
+          <div class="form-grid">
+
+            <!-- Title -->
+            <div class="form-group full-width">
+              <label for="title">Alert Title <span class="required-mark">*</span></label>
+              <input
+                type="text"
+                id="title"
+                formControlName="title"
+                placeholder="e.g. Delivery Delay: PO #1004 Overdue"
+                [class.input-error]="notifForm.get('title')?.invalid && notifForm.get('title')?.touched"
+              />
+              <span class="error-text" *ngIf="notifForm.get('title')?.invalid && notifForm.get('title')?.touched">
+                Title is required.
+              </span>
+            </div>
+
+            <!-- Recipient -->
+            <div class="form-group">
+              <label for="recipient">Recipient Email / User <span class="required-mark">*</span></label>
+              <input
+                type="email"
+                id="recipient"
+                formControlName="recipient"
+                placeholder="e.g. procurement@vrip.enterprise"
+                [class.input-error]="notifForm.get('recipient')?.invalid && notifForm.get('recipient')?.touched"
+              />
+              <span class="error-text" *ngIf="notifForm.get('recipient')?.invalid && notifForm.get('recipient')?.touched">
+                Valid recipient email is required.
+              </span>
+            </div>
+
+            <!-- Notification Type / Category -->
+            <div class="form-group">
+              <label for="notification_type">Notification Category <span class="required-mark">*</span></label>
+              <select
+                id="notification_type"
+                formControlName="notification_type"
+                [class.input-error]="notifForm.get('notification_type')?.invalid && notifForm.get('notification_type')?.touched"
+              >
+                <option value="Procurement">Procurement Alert</option>
+                <option value="Delivery Delay">Delivery Delay Alert</option>
+                <option value="Vendor Approval">Vendor Approval Alert</option>
+                <option value="Contract Expiry">Contract Expiry Alert</option>
+                <option value="Compliance">Compliance & Risk Alert</option>
+                <option value="System">System Notice</option>
+              </select>
+            </div>
+
+            <!-- Full Message -->
+            <div class="form-group full-width">
+              <label for="message">Alert Message Body <span class="required-mark">*</span></label>
+              <textarea
+                id="message"
+                rows="5"
+                formControlName="message"
+                placeholder="Describe the operational incident, contract details, or requested action items..."
+                [class.input-error]="notifForm.get('message')?.invalid && notifForm.get('message')?.touched"
+              ></textarea>
+              <span class="error-text" *ngIf="notifForm.get('message')?.invalid && notifForm.get('message')?.touched">
+                Message body is required.
+              </span>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="secondary-button" (click)="cancel()" [disabled]="submitting">
+            Cancel
+          </button>
+
+          <button type="submit" class="primary-button" [disabled]="submitting || notifForm.invalid">
+            <span *ngIf="submitting" class="button-spinner"></span>
+            <span>{{ submitting ? 'Dispatching...' : 'Dispatch Alert' }}</span>
+          </button>
+        </div>
+
+      </form>
+    </div>
+
+    <!-- Side Delivery Channel Status Card -->
+    <div class="side-card">
+      <h3>Multi-Channel Dispatch Hub</h3>
+      <p class="side-sub">Channel status and routing configuration in VRIP platform:</p>
+
+      <div class="channel-status-list">
+        <div class="channel-row">
+          <div class="channel-info">
+            <div class="channel-title-row">
+              <span class="channel-dot active-dot"></span>
+              <strong>In-App Alert Feed</strong>
+            </div>
+            <small>Persisted to PostgreSQL notifications table</small>
+          </div>
+          <span class="channel-tag active-tag">Active</span>
+        </div>
+
+        <div class="channel-row">
+          <div class="channel-info">
+            <div class="channel-title-row">
+              <span class="channel-dot ready-dot"></span>
+              <strong>Email Notifications (SMTP)</strong>
+            </div>
+            <small>Requires external SMTP host configuration</small>
+          </div>
+          <span class="channel-tag ready-tag">Ready</span>
+        </div>
+
+        <div class="channel-row">
+          <div class="channel-info">
+            <div class="channel-title-row">
+              <span class="channel-dot ready-dot"></span>
+              <strong>SMS Notifications (Twilio)</strong>
+            </div>
+            <small>Requires external Twilio credentials</small>
+          </div>
+          <span class="channel-tag ready-tag">Ready</span>
+        </div>
+      </div>
+
+      <div class="side-help-box">
+        <strong>💡 Note on External Providers</strong>
+        <p>In-app alerts are live and recorded in PostgreSQL. Outbound SMTP and SMS handlers are pre-wired and activate when external provider credentials are supplied via environment variables.</p>
+      </div>
+    </div>
+
+  </div>
 
 </div>

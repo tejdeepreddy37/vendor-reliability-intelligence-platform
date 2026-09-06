@@ -182,6 +182,16 @@ def update_vendor_performance_service(
     for key, value in update_data.items():
         setattr(performance, key, value)
 
+    performance.performance_score = calculate_performance_score(
+        on_time_deliveries=performance.on_time_deliveries or 0,
+        delayed_deliveries=performance.delayed_deliveries or 0,
+        quality_rating=performance.quality_rating or 0.0,
+        response_time=performance.response_time or 0.0,
+        issue_resolution_time=performance.issue_resolution_time or 0.0,
+        order_completion_rate=performance.order_completion_rate or 0.0,
+        service_rating=performance.service_rating or 0.0,
+    )
+
     return update_vendor_performance(
         db,
         performance,

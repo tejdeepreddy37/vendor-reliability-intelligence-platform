@@ -26,10 +26,10 @@ class VendorUpdate(BaseModel):
 class VendorResponse(BaseModel):
     id: int
     company_name: str
-    contact_person: str
+    contact_person: Optional[str] = None
     email: EmailStr
-    phone: str
-    address: str
+    phone: Optional[str] = None
+    address: Optional[str] = None
     category: str
     status: str
     is_active: bool

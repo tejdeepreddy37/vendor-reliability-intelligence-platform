@@ -1,190 +1,207 @@
-<div class="details-container">
+<div class="contract-details-page">
 
-  <div class="details-header">
+  <!-- BACKGROUND AMBIENT GLOWS -->
+  <div class="ambient-glow glow-top-left" aria-hidden="true"></div>
+  <div class="ambient-glow glow-top-right" aria-hidden="true"></div>
 
-    <a
-      routerLink="/contracts"
-      class="back-link"
-    >
-      &larr; Back to Contracts
-    </a>
+  <div class="details-container">
 
-    <div
-      class="header-main"
-      *ngIf="contract"
-    >
-
-      <div class="title-meta">
-
-        <span class="eyebrow">
-          CONTRACT DETAILS
-        </span>
-
-        <h1 class="contract-title">
-          {{ contract.contract_title }}
-        </h1>
-
-        <span class="contract-subtitle">
-          {{ contract.contract_number }}
-        </span>
-
-      </div>
-
-      <div class="action-buttons">
-
-        <button
-          type="button"
-          class="btn btn-outline delete"
-          (click)="deleteContract()"
-        >
-          Delete
-        </button>
-
-        <a
-          [routerLink]="[
-            '/contracts/edit',
-            contract.id
-          ]"
-          class="btn btn-primary"
-        >
-          Edit Contract
-        </a>
-
-      </div>
-
-    </div>
-
-  </div>
-
-  <div
-    *ngIf="error"
-    class="alert-banner"
-  >
-    {{ errorMessage }}
-  </div>
-
-  <div
-    *ngIf="loading"
-    class="loading-box"
-  >
-    Loading contract details...
-  </div>
-
-  <div
-    class="details-grid"
-    *ngIf="!loading && contract"
-  >
-
-    <div class="card">
-
-      <div class="card-header">
-        <h2 class="card-title">
-          Agreement &amp; Financials
-        </h2>
-      </div>
-
-      <div class="card-body grid-2">
-
-        <div class="info-field">
-          <label>Status</label>
-
-          <div>
-            <span
-              class="status-pill"
-              [ngClass]="
-                'status-' +
-                (contract.status || 'active').toLowerCase()
-              "
-            >
-              {{ contract.status || 'Active' }}
-            </span>
-          </div>
-        </div>
-
-        <div class="info-field">
-          <label>Vendor ID</label>
-          <div>
-            #{{ contract.vendor_id }}
-          </div>
-        </div>
-
-        <div class="info-field">
-          <label>Contract Value</label>
-
-          <div class="amount-value">
-            ${{ contract.contract_value | number:'1.2-2' }}
-          </div>
-        </div>
-
-        <div class="info-field">
-          <label>Duration</label>
-
-          <div>
-            {{ contract.start_date | date:'mediumDate' }}
-            &rarr;
-            {{ contract.end_date | date:'mediumDate' }}
-          </div>
-        </div>
-
-      </div>
-
-    </div>
-
-    <div class="card">
-
-      <div class="card-header">
-        <h2 class="card-title">
-          Contract Status
-        </h2>
-      </div>
-
-      <div class="card-body">
-
-        <div class="status-summary">
-
-          <span
-            class="status-pill large"
-            [ngClass]="
-              'status-' +
-              (contract.status || 'active').toLowerCase()
-            "
-          >
+    <header class="details-header">
+      <div class="details-header-info">
+        <div class="eyebrow-row">
+          <span class="eyebrow">PROCUREMENT / CONTRACT MANAGEMENT</span>
+          <span *ngIf="contract" class="status-pill" [ngClass]="getStatusClass(contract.status, contract.end_date)">
+            <span class="status-dot"></span>
             {{ contract.status || 'Active' }}
           </span>
-
-          <p>
-            Contract lifecycle status
-          </p>
-
         </div>
-
+        <h1>{{ contract ? (contract.contract_title || contract.contract_name || contract.contract_number) : 'Contract Details' }}</h1>
+        <p *ngIf="contract">Agreement #{{ contract.contract_number }} • Database Record ID #{{ contract.id }}</p>
       </div>
 
+      <div class="header-actions">
+        <button type="button" class="btn-saas-action btn-secondary" (click)="backToList()">
+          ← Back to Contracts
+        </button>
+
+        <button *ngIf="contract" type="button" class="btn-saas-action btn-primary-cta" (click)="editContract()">
+          Edit Contract
+        </button>
+      </div>
+    </header>
+
+    <!-- Error Banner -->
+    <div *ngIf="errorMessage" class="error-banner">
+      <div class="error-content">
+        <span class="error-badge">!</span>
+        <div class="error-text">
+          <strong>Notice</strong>
+          <p>{{ errorMessage }}</p>
+        </div>
+      </div>
+      <button type="button" class="btn-retry" (click)="backToList()">Back to List</button>
     </div>
 
-    <div class="card full-width">
+    <!-- Loading State -->
+    <div *ngIf="loading" class="details-loading">
+      <div class="loading-spinner"></div>
+      <p>Loading contract agreement record and supplier details...</p>
+    </div>
 
-      <div class="card-header">
-        <h2 class="card-title">
-          Terms &amp; Conditions
-        </h2>
+    <div *ngIf="!loading && contract" class="details-layout">
+
+      <!-- Left Column: Primary Details -->
+      <div class="main-column">
+
+        <!-- Financial & Term Schedule Card -->
+        <section class="saas-card section-card">
+          <div class="card-header">
+            <h2>Agreement Commitment & Valuation</h2>
+            <span *ngIf="isExpiringSoon(contract.end_date) && (contract.status || 'Active').toLowerCase() === 'active'" class="expiring-alert-pill">
+              ⚠️ Expiring Soon
+            </span>
+          </div>
+
+          <div class="card-body">
+            <div class="kpi-banner">
+              <div class="kpi-item">
+                <span class="kpi-label">Total Contract Value</span>
+                <strong class="kpi-val currency-val">₹{{ contract.contract_value | number:'1.2-2' }}</strong>
+                <small class="kpi-sub">Indian Rupee Legal Commitment</small>
+              </div>
+
+              <div class="kpi-item">
+                <span class="kpi-label">Effective Start Date</span>
+                <strong class="kpi-date">{{ contract.start_date | date:'longDate' }}</strong>
+              </div>
+
+              <div class="kpi-item">
+                <span class="kpi-label">Expiration / Renewal Date</span>
+                <strong class="kpi-date" [class.danger-date]="isExpired(contract.end_date)" [class.warn-date]="isExpiringSoon(contract.end_date)">
+                  {{ contract.end_date | date:'longDate' }}
+                </strong>
+              </div>
+            </div>
+
+            <div *ngIf="contract.terms_conditions || contract.description" class="terms-box">
+              <span class="terms-label">Contract Terms, SLA & Specifications</span>
+              <p class="terms-text">{{ contract.terms_conditions || contract.description }}</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Associated Supplier Card -->
+        <section class="saas-card section-card">
+          <div class="card-header">
+            <h2>Associated Supplier Details</h2>
+            <span *ngIf="vendor?.status" class="vendor-status-pill">
+              {{ vendor?.status }}
+            </span>
+          </div>
+
+          <div class="card-body">
+            <div class="detail-grid" *ngIf="vendor; else noVendor">
+              <div class="detail-item">
+                <span class="detail-label">Legal Company Name</span>
+                <span class="detail-value highlight">{{ vendor.company_name }}</span>
+              </div>
+
+              <div class="detail-item">
+                <span class="detail-label">Contact Person</span>
+                <span class="detail-value">{{ vendor.contact_person || '—' }}</span>
+              </div>
+
+              <div class="detail-item">
+                <span class="detail-label">Business Email</span>
+                <span class="detail-value">{{ vendor.email }}</span>
+              </div>
+
+              <div class="detail-item">
+                <span class="detail-label">Phone Number</span>
+                <span class="detail-value">{{ vendor.phone || '—' }}</span>
+              </div>
+
+              <div class="detail-item">
+                <span class="detail-label">Category</span>
+                <span class="detail-value">{{ vendor.category }}</span>
+              </div>
+
+              <div class="detail-item full-width" *ngIf="vendor.address">
+                <span class="detail-label">Registered Business Address</span>
+                <span class="detail-value address-text">{{ vendor.address }}</span>
+              </div>
+            </div>
+
+            <ng-template #noVendor>
+              <div class="empty-sub">
+                <p>Vendor ID #{{ contract.vendor_id }} is linked to this contract.</p>
+              </div>
+            </ng-template>
+          </div>
+        </section>
+
       </div>
 
-      <div class="card-body">
+      <!-- Right Column: Operational Controls -->
+      <div class="side-column">
 
-        <p
-          class="terms-text"
-          *ngIf="contract.terms_conditions"
-        >
-          {{ contract.terms_conditions }}
-        </p>
+        <!-- Operational Status Management -->
+        <section class="saas-card section-card">
+          <div class="card-header">
+            <h2>Agreement Status</h2>
+          </div>
 
-        <p
-          class="terms-empty"
-          *ngIf="!contract.terms_conditions"
-        >
-          No additional terms recorded.
-        </p>
+          <div class="card-body">
+            <p class="section-desc">Manage legally binding status for this agreement:</p>
+
+            <div class="action-buttons-stack">
+              <button
+                type="button"
+                class="status-btn btn-active"
+                [disabled]="actionLoading || contract.status === 'Active'"
+                (click)="updateStatus('Active')"
+              >
+                ✓ Mark as Active
+              </button>
+
+              <button
+                type="button"
+                class="status-btn btn-pending"
+                [disabled]="actionLoading || contract.status === 'Pending'"
+                (click)="updateStatus('Pending')"
+              >
+                ⏳ Mark as Under Review
+              </button>
+
+              <button
+                type="button"
+                class="status-btn btn-terminate"
+                [disabled]="actionLoading || contract.status === 'Terminated'"
+                (click)="updateStatus('Terminated')"
+              >
+                ✕ Terminate Agreement
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Administration Zone -->
+        <section class="saas-card section-card danger-card">
+          <div class="card-header">
+            <h2>Contract Administration</h2>
+          </div>
+
+          <div class="card-body">
+            <p class="danger-desc">Deleting this contract permanently removes the legal agreement record from PostgreSQL.</p>
+            <button
+              type="button"
+              class="danger-button"
+              (click)="deleteContract()"
+            >
+              Delete Contract Record
+            </button>
+          </div>
+        </section>
 
       </div>
 

@@ -63,15 +63,15 @@
             <td>
               <div class="vendor-cell">
                 <div class="vendor-avatar">
-                  {{ getInitials(vendor.vendor_name) }}
+                  {{ getInitials(vendor.company_name || vendor.contact_person) }}
                 </div>
 
                 <div>
                   <div class="vendor-name">
-                    {{ vendor.vendor_name || 'Unnamed Vendor' }}
+                    {{ vendor.company_name || 'Unnamed Company' }}
                   </div>
                   <div class="vendor-id">
-                    Vendor #{{ vendor.id }}
+                    Contact: {{ vendor.contact_person || '—' }} • #{{ vendor.id }}
                   </div>
                 </div>
               </div>

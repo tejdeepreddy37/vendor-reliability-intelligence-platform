@@ -16,6 +16,10 @@ export class VendorService {
     return this.http.get<Vendor[]>(this.API_URL);
   }
 
+  getVendors(): Observable<Vendor[]> {
+    return this.getAllVendors();
+  }
+
   getVendorById(vendorId: number): Observable<Vendor> {
     return this.http.get<Vendor>(
       `${this.API_URL}/${vendorId}`

@@ -1,74 +1,153 @@
-<div class="container mt-4">
+<div class="comm-form-page">
 
-  <h2>Create Communication</h2>
+  <div class="form-container">
 
-  <form [formGroup]="communicationForm"
-        (ngSubmit)="onSubmit()">
+    <header class="form-header">
+      <div class="form-header-content">
+        <span class="eyebrow">PROCUREMENT / VENDOR RELATIONS</span>
+        <h1>{{ isEditMode ? 'Edit Communication Record' : 'Log Communication' }}</h1>
+        <p>{{ isEditMode ? 'Update communication details, message notes, or correspondence status.' : 'Document supplier discussions, email dispatches, meeting outcomes, or formal notices.' }}</p>
+      </div>
 
-    <div class="mb-3">
-      <label class="form-label">Vendor ID</label>
-      <input
-        class="form-control"
-        type="number"
-        formControlName="vendor_id">
+      <button type="button" class="back-link-btn" (click)="cancel()">
+        ← Back to Communications
+      </button>
+    </header>
+
+    <!-- Error Banner -->
+    <div *ngIf="errorMessage" class="error-banner">
+      <span class="err-icon">⚠️</span>
+      <span class="err-text">{{ errorMessage }}</span>
     </div>
 
-    <div class="mb-3">
-      <label class="form-label">Subject</label>
-      <input
-        class="form-control"
-        type="text"
-        formControlName="subject">
+    <!-- Loading State -->
+    <div *ngIf="loading" class="form-loading">
+      <div class="loading-spinner"></div>
+      <p>Loading communication record and supplier directory...</p>
     </div>
 
-    <div class="mb-3">
-      <label class="form-label">Message</label>
-      <textarea
-        class="form-control"
-        rows="5"
-        formControlName="message"></textarea>
-    </div>
+    <form *ngIf="!loading" [formGroup]="commForm" (ngSubmit)="onSubmit()" class="comm-form-card" novalidate>
 
-    <div class="mb-3">
-      <label class="form-label">Communication Type</label>
-      <select
-        class="form-select"
-        formControlName="communication_type">
+      <div class="form-section">
+        <h2 class="section-title">Supplier & Channel Details</h2>
+        <div class="form-grid">
 
-        <option value="Email">Email</option>
-        <option value="Phone">Phone</option>
-        <option value="Meeting">Meeting</option>
+          <!-- Vendor Selection (Real PostgreSQL vendors) -->
+          <div class="form-group">
+            <label for="vendor_id">
+              Associated Supplier / Vendor <span class="required">*</span>
+            </label>
+            <select
+              id="vendor_id"
+              formControlName="vendor_id"
+              [class.invalid]="commForm.get('vendor_id')?.invalid && commForm.get('vendor_id')?.touched"
+            >
+              <option [ngValue]="null" disabled>Select supplier from directory</option>
+              <option *ngFor="let vendor of vendors" [ngValue]="vendor.id">
+                {{ vendor.company_name }} (ID #{{ vendor.id }}) • {{ vendor.category }}
+              </option>
+            </select>
+            <div *ngIf="commForm.get('vendor_id')?.invalid && commForm.get('vendor_id')?.touched" class="field-error">
+              Please select a supplier from the directory.
+            </div>
+          </div>
 
-      </select>
-    </div>
+          <!-- Communication Type -->
+          <div class="form-group">
+            <label for="communication_type">
+              Communication Channel / Type <span class="required">*</span>
+            </label>
+            <select
+              id="communication_type"
+              formControlName="communication_type"
+            >
+              <option *ngFor="let type of communicationTypes" [value]="type">
+                {{ type }}
+              </option>
+            </select>
+          </div>
 
-    <div class="mb-3">
-      <label class="form-label">Status</label>
-      <select
-        class="form-select"
-        formControlName="status">
+          <!-- Status -->
+          <div class="form-group full-width">
+            <label for="status">
+              Correspondence Status <span class="required">*</span>
+            </label>
+            <select
+              id="status"
+              formControlName="status"
+            >
+              <option *ngFor="let st of statusOptions" [value]="st">
+                {{ st }}
+              </option>
+            </select>
+          </div>
 
-        <option value="Sent">Sent</option>
-        <option value="Pending">Pending</option>
-        <option value="Completed">Completed</option>
+        </div>
+      </div>
 
-      </select>
-    </div>
+      <div class="form-section">
+        <h2 class="section-title">Subject & Message Content</h2>
+        <div class="form-grid">
 
-    <div class="mb-3">
-      <label class="form-label">Communication Date</label>
-      <input
-        class="form-control"
-        type="date"
-        formControlName="communication_date">
-    </div>
+          <!-- Subject -->
+          <div class="form-group full-width">
+            <label for="subject">
+              Subject / Topic <span class="required">*</span>
+            </label>
+            <input
+              id="subject"
+              type="text"
+              formControlName="subject"
+              placeholder="e.g. SLA Review Q3 & Renewal Terms Discussion"
+              [class.invalid]="commForm.get('subject')?.invalid && commForm.get('subject')?.touched"
+            />
+            <div *ngIf="commForm.get('subject')?.invalid && commForm.get('subject')?.touched" class="field-error">
+              Subject is required (max 255 characters).
+            </div>
+          </div>
 
-    <button
-      type="submit"
-      class="btn btn-primary">
-      Save Communication
-    </button>
+          <!-- Message -->
+          <div class="form-group full-width">
+            <label for="message">
+              Message Content / Discussion Notes <span class="required">*</span>
+            </label>
+            <textarea
+              id="message"
+              rows="6"
+              formControlName="message"
+              placeholder="Enter complete correspondence transcript, key discussion takeaways, or follow-up action items..."
+              [class.invalid]="commForm.get('message')?.invalid && commForm.get('message')?.touched"
+            ></textarea>
+            <div *ngIf="commForm.get('message')?.invalid && commForm.get('message')?.touched" class="field-error">
+              Message content is required (max 2000 characters).
+            </div>
+          </div>
 
-  </form>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button
+          type="button"
+          class="secondary-button"
+          (click)="cancel()"
+          [disabled]="submitting"
+        >
+          Cancel
+        </button>
+
+        <button
+          type="submit"
+          class="primary-button"
+          [disabled]="submitting || commForm.invalid"
+        >
+          <span *ngIf="submitting" class="button-spinner"></span>
+          {{ submitting ? 'Saving...' : (isEditMode ? 'Save Changes' : 'Log Communication') }}
+        </button>
+      </div>
+
+    </form>
+
+  </div>
 
 </div>

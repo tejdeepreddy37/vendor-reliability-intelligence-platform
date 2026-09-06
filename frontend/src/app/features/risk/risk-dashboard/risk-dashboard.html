@@ -1,88 +1,404 @@
-<div class="container">
+<div class="risk-page">
 
-    <h2>Vendor Risk Dashboard</h2>
-
-    <div class="cards">
-
-        <div class="card total">
-            <h3>Total Vendors</h3>
-            <h1>{{summary.totalVendors}}</h1>
-        </div>
-
-        <div class="card high">
-            <h3>High Risk</h3>
-            <h1>{{summary.highRisk}}</h1>
-        </div>
-
-        <div class="card medium">
-            <h3>Medium Risk</h3>
-            <h1>{{summary.mediumRisk}}</h1>
-        </div>
-
-        <div class="card low">
-            <h3>Low Risk</h3>
-            <h1>{{summary.lowRisk}}</h1>
-        </div>
-
-        <div class="card score">
-            <h3>Average Reliability</h3>
-            <h1>{{summary.averageScore}}%</h1>
-        </div>
-
+  <header class="page-header">
+    <div class="page-title-group">
+      <span class="eyebrow">RISK MANAGEMENT / VENDOR INTELLIGENCE</span>
+      <h1>Risk & Reliability Intelligence</h1>
+      <p>Continuous supplier reliability scoring, operational risk detection, and proactive mitigation recommendations.</p>
     </div>
 
-    <div class="table-card">
+    <div class="header-actions">
+      <button type="button" class="secondary-button" (click)="loadData()" [disabled]="loading" title="Refresh risk intelligence">
+        <svg viewBox="0 0 24 24" class="btn-icon" aria-hidden="true">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+        </svg>
+        <span>{{ loading ? 'Refreshing...' : 'Refresh' }}</span>
+      </button>
 
-        <h3>Recent Risk Alerts</h3>
+      <button type="button" class="secondary-button" (click)="navigateToRiskList()">
+        <svg viewBox="0 0 24 24" class="btn-icon" aria-hidden="true">
+          <line x1="8" y1="6" x2="21" y2="6"></line>
+          <line x1="8" y1="12" x2="21" y2="12"></line>
+          <line x1="8" y1="18" x2="21" y2="18"></line>
+          <line x1="3" y1="6" x2="3.01" y2="6"></line>
+          <line x1="3" y1="12" x2="3.01" y2="12"></line>
+          <line x1="3" y1="18" x2="3.01" y2="18"></line>
+        </svg>
+        <span>Risk Registry</span>
+      </button>
 
-        <table>
-
-            <thead>
-
-                <tr>
-                    <th>Vendor</th>
-                    <th>Risk Level</th>
-                    <th>Issue</th>
-                    <th>Score</th>
-                </tr>
-
-            </thead>
-
-            <tbody>
-
-                <tr *ngFor="let alert of recentAlerts">
-
-                    <td>{{alert.vendor}}</td>
-
-                    <td>
-
-                        <span
-                            [ngClass]="{
-
-                            'high-text':alert.risk==='High',
-
-                            'medium-text':alert.risk==='Medium',
-
-                            'low-text':alert.risk==='Low'
-
-                        }">
-
-                            {{alert.risk}}
-
-                        </span>
-
-                    </td>
-
-                    <td>{{alert.issue}}</td>
-
-                    <td>{{alert.score}}</td>
-
-                </tr>
-
-            </tbody>
-
-        </table>
-
+      <button type="button" class="primary-button" (click)="navigateToAddRisk()">
+        <svg viewBox="0 0 24 24" class="btn-icon" aria-hidden="true">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        <span>Log Vendor Risk</span>
+      </button>
     </div>
+  </header>
+
+  <!-- Error Banner -->
+  <div *ngIf="errorMessage" class="error-banner">
+    <span>⚠️</span>
+    <span>{{ errorMessage }}</span>
+    <button type="button" class="retry-btn" (click)="loadData()">Retry</button>
+  </div>
+
+  <!-- Summary KPI Row -->
+  <section class="summary-row" aria-label="Risk and reliability summary metrics">
+    <div class="summary-card avg-card">
+      <div class="card-head">
+        <span class="summary-label">Avg Reliability Score</span>
+        <div class="kpi-mini-icon blue">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+        </div>
+      </div>
+      <strong class="summary-val avg-val">{{ averageReliability }}%</strong>
+      <small class="summary-meta">Across active portfolio</small>
+    </div>
+
+    <div class="summary-card high-card">
+      <div class="card-head">
+        <span class="summary-label">High Risk Suppliers</span>
+        <div class="kpi-mini-icon red">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+        </div>
+      </div>
+      <strong class="summary-val high-val">{{ highRiskCount }}</strong>
+      <small class="summary-meta">Requires urgent mitigation</small>
+    </div>
+
+    <div class="summary-card med-card">
+      <div class="card-head">
+        <span class="summary-label">Medium Risk</span>
+        <div class="kpi-mini-icon amber">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+        </div>
+      </div>
+      <strong class="summary-val med-val">{{ mediumRiskCount }}</strong>
+      <small class="summary-meta">Monitoring required</small>
+    </div>
+
+    <div class="summary-card low-card">
+      <div class="card-head">
+        <span class="summary-label">Low Risk / Healthy</span>
+        <div class="kpi-mini-icon green">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"></path>
+          </svg>
+        </div>
+      </div>
+      <strong class="summary-val low-val">{{ lowRiskCount }}</strong>
+      <small class="summary-meta">Standard SLA adherence</small>
+    </div>
+
+    <div class="summary-card incidents-card">
+      <div class="card-head">
+        <span class="summary-label">Open Risk Incidents</span>
+        <div class="kpi-mini-icon purple">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+          </svg>
+        </div>
+      </div>
+      <strong class="summary-val incidents-val">{{ totalOpenRisks }}</strong>
+      <small class="summary-meta">Active risk logs</small>
+    </div>
+  </section>
+
+  <!-- Main Intelligence Table Card -->
+  <section class="risk-card">
+
+    <div class="table-toolbar">
+      <div class="toolbar-title-group">
+        <h2>Portfolio Reliability & Risk Assessment</h2>
+        <p>{{ filteredSummaries.length }} supplier{{ filteredSummaries.length === 1 ? '' : 's' }} in assessment</p>
+      </div>
+
+      <div class="toolbar-controls">
+        <div class="search-box">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="7"></circle>
+            <line x1="16.5" y1="16.5" x2="21" y2="21"></line>
+          </svg>
+          <input
+            type="text"
+            [(ngModel)]="searchTerm"
+            placeholder="Search supplier, category, risk level..."
+            aria-label="Search suppliers"
+          />
+        </div>
+
+        <select
+          class="level-filter"
+          [(ngModel)]="levelFilter"
+          aria-label="Filter by risk level"
+        >
+          <option value="all">All Risk Levels</option>
+          <option value="high">High Risk</option>
+          <option value="medium">Medium Risk</option>
+          <option value="low">Low Risk</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div *ngIf="loading" class="loading-state">
+      <div class="loading-spinner"></div>
+      <p>Calculating vendor reliability scores and risk factors from PostgreSQL...</p>
+    </div>
+
+    <!-- Portfolio Table -->
+    <div class="table-wrapper" *ngIf="!loading && filteredSummaries.length > 0">
+      <table class="enterprise-table">
+        <thead>
+          <tr>
+            <th>SUPPLIER / VENDOR</th>
+            <th>OVERALL RELIABILITY</th>
+            <th>RISK LEVEL</th>
+            <th>DELIVERY</th>
+            <th>QUALITY</th>
+            <th>COMPLIANCE</th>
+            <th>INCIDENTS</th>
+            <th class="actions-column">ACTIONS</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <tr *ngFor="let summary of filteredSummaries">
+            <td>
+              <div class="vendor-cell">
+                <span class="vendor-name-text">{{ summary.vendor.company_name }}</span>
+                <span class="vendor-sub-text">ID #{{ summary.vendor.id }} • {{ summary.vendor.category }}</span>
+              </div>
+            </td>
+
+            <td>
+              <div class="score-cell" *ngIf="summary.reliability; else noReliability">
+                <span class="score-badge" [ngClass]="getScoreColorClass(summary.reliability.overall_reliability_score)">
+                  {{ summary.reliability.overall_reliability_score }}%
+                </span>
+              </div>
+              <ng-template #noReliability>
+                <span class="score-sub">Pending eval</span>
+              </ng-template>
+            </td>
+
+            <td>
+              <span
+                *ngIf="summary.reliability"
+                class="level-pill"
+                [ngClass]="getRiskLevelClass(summary.reliability.risk_level)"
+              >
+                <span class="level-dot"></span>
+                {{ summary.reliability.risk_level }}
+              </span>
+              <span *ngIf="!summary.reliability" class="level-pill level-low">
+                <span class="level-dot"></span>
+                LOW
+              </span>
+            </td>
+
+            <td>
+              <span class="sub-score" *ngIf="summary.reliability">
+                {{ summary.reliability.delivery_score }}%
+              </span>
+              <span class="sub-score text-muted" *ngIf="!summary.reliability">—</span>
+            </td>
+
+            <td>
+              <span class="sub-score" *ngIf="summary.reliability">
+                {{ summary.reliability.quality_score }}%
+              </span>
+              <span class="sub-score text-muted" *ngIf="!summary.reliability">—</span>
+            </td>
+
+            <td>
+              <span class="sub-score" *ngIf="summary.reliability">
+                {{ summary.reliability.compliance_score }}%
+              </span>
+              <span class="sub-score text-muted" *ngIf="!summary.reliability">—</span>
+            </td>
+
+            <td>
+              <span class="incidents-badge" [class.has-incidents]="summary.risks.length > 0">
+                {{ summary.risks.length }} logged
+              </span>
+            </td>
+
+            <td class="actions-column">
+              <div class="row-actions">
+                <button
+                  type="button"
+                  class="action-button view"
+                  (click)="openQuickView(summary)"
+                  title="View reliability overview"
+                >
+                  Overview
+                </button>
+
+                <button
+                  type="button"
+                  class="action-button deep-dive"
+                  (click)="viewVendorIntelligence(summary)"
+                  title="Deep-dive into vendor intelligence"
+                >
+                  Intelligence
+                </button>
+
+                <button
+                  type="button"
+                  class="action-button add-risk"
+                  (click)="navigateToAddRisk(summary.vendor.id!)"
+                  title="Log new risk for this vendor"
+                >
+                  + Risk
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Empty State -->
+    <div class="empty-state" *ngIf="!loading && filteredSummaries.length === 0">
+      <div class="empty-icon">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"></path>
+        </svg>
+      </div>
+
+      <h3>{{ vendors.length === 0 ? 'No suppliers available for risk assessment' : 'No suppliers matching filter' }}</h3>
+      <p>
+        {{
+          vendors.length === 0
+            ? 'Onboard active suppliers in the Vendors module to start tracking reliability scores and operational risk factors.'
+            : 'Try adjusting your search query or risk level filter.'
+        }}
+      </p>
+    </div>
+
+  </section>
+
+  <!-- Quick Overview Modal Drawer -->
+  <div class="modal-overlay" *ngIf="selectedSummary" (click)="closeQuickView()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-header-info">
+          <div class="modal-eyebrow-row">
+            <span class="eyebrow">RELIABILITY INTELLIGENCE PROFILE</span>
+            <span *ngIf="selectedSummary.reliability" class="level-pill" [ngClass]="getRiskLevelClass(selectedSummary.reliability.risk_level)">
+              <span class="level-dot"></span>
+              {{ selectedSummary.reliability.risk_level }} RISK
+            </span>
+          </div>
+          <h2>{{ selectedSummary.vendor.company_name }}</h2>
+          <p>Vendor ID #{{ selectedSummary.vendor.id }} • {{ selectedSummary.vendor.category }} • {{ selectedSummary.vendor.email }}</p>
+        </div>
+        <button type="button" class="close-btn" (click)="closeQuickView()">✕</button>
+      </div>
+
+      <div class="modal-body">
+
+        <!-- Score Meter Grid -->
+        <div class="score-meters-grid" *ngIf="selectedSummary.reliability; else noModalReliability">
+          <div class="meter-card primary-meter">
+            <span class="meter-label">Overall Reliability</span>
+            <strong class="meter-val">{{ selectedSummary.reliability.overall_reliability_score }}%</strong>
+            <small class="meter-sub">Weighted Intelligence Score</small>
+          </div>
+
+          <div class="meter-card">
+            <span class="meter-label">Delivery Score</span>
+            <strong class="meter-val">{{ selectedSummary.reliability.delivery_score }}%</strong>
+            <small class="meter-sub">On-time fulfillment</small>
+          </div>
+
+          <div class="meter-card">
+            <span class="meter-label">Quality Score</span>
+            <strong class="meter-val">{{ selectedSummary.reliability.quality_score }}%</strong>
+            <small class="meter-sub">Product/service quality</small>
+          </div>
+
+          <div class="meter-card">
+            <span class="meter-label">Compliance Score</span>
+            <strong class="meter-val">{{ selectedSummary.reliability.compliance_score }}%</strong>
+            <small class="meter-sub">Order completion rate</small>
+          </div>
+
+          <div class="meter-card">
+            <span class="meter-label">Communication</span>
+            <strong class="meter-val">{{ selectedSummary.reliability.communication_score }}%</strong>
+            <small class="meter-sub">Responsiveness rating</small>
+          </div>
+
+          <div class="meter-card">
+            <span class="meter-label">Risk Sub-Score</span>
+            <strong class="meter-val">{{ selectedSummary.reliability.risk_score }}%</strong>
+            <small class="meter-sub">Impact mitigation</small>
+          </div>
+        </div>
+
+        <ng-template #noModalReliability>
+          <div class="empty-risks">
+            <p>Reliability intelligence pending evaluation for this supplier.</p>
+          </div>
+        </ng-template>
+
+        <!-- Recommendations Box -->
+        <div class="recommendations-box" *ngIf="selectedSummary.reliability?.recommendations && selectedSummary.reliability!.recommendations.length > 0">
+          <h3>Procurement Action Recommendations</h3>
+          <ul class="rec-list">
+            <li *ngFor="let rec of selectedSummary.reliability!.recommendations">{{ rec }}</li>
+          </ul>
+        </div>
+
+        <!-- Active Risks Preview -->
+        <div class="risks-preview-box">
+          <div class="box-header">
+            <h3>Active Logged Risks ({{ selectedSummary.risks.length }})</h3>
+            <button type="button" class="btn-text" (click)="navigateToAddRisk(selectedSummary.vendor.id!)">+ Log Risk</button>
+          </div>
+
+          <div *ngIf="selectedSummary.risks.length > 0" class="risk-items-list">
+            <div *ngFor="let r of selectedSummary.risks" class="risk-item-row">
+              <div class="risk-item-main">
+                <span class="sev-pill" [ngClass]="getSeverityClass(r.severity)">{{ r.severity }}</span>
+                <strong>{{ r.risk_type }}</strong>
+                <span class="risk-desc-snippet">{{ r.description || 'No description provided' }}</span>
+              </div>
+              <div class="risk-item-meta">
+                <span class="impact-text">Impact: {{ r.impact_score }}/100</span>
+                <span class="status-sub">{{ r.status }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div *ngIf="selectedSummary.risks.length === 0" class="empty-risks">
+            <p>No specific risk incidents currently logged for this supplier.</p>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="secondary-button" (click)="closeQuickView()">Close</button>
+        <button type="button" class="primary-button" (click)="viewVendorIntelligence(selectedSummary)">Full Intelligence View</button>
+      </div>
+    </div>
+  </div>
 
 </div>

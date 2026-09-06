@@ -1,21 +1,11 @@
 export interface Vendor {
-
   id?: number;
-
-  vendor_name: string;
-
   company_name: string;
-
+  contact_person: string;
   email: string;
-
   phone: string;
-
   address: string;
-
   category: string;
-
   status?: string;
-
   is_active?: boolean;
-
 }

@@ -1,123 +1,154 @@
-<div class="page">
+<div class="risk-form-page">
 
-    <div class="header">
-
-        <div>
-
-            <h1>Create Risk</h1>
-
-            <p>Add and monitor vendor risks</p>
-
-        </div>
-
+  <header class="page-header">
+    <div class="page-title-group">
+      <span class="eyebrow">RISK MANAGEMENT / VENDOR INTELLIGENCE</span>
+      <h1>{{ isEditMode ? 'Edit Risk Incident' : 'Log Vendor Risk Incident' }}</h1>
+      <p>{{ isEditMode ? 'Update risk assessment, severity rating, and mitigation context.' : 'Record a new operational, quality, financial, or compliance risk for a supplier.' }}</p>
     </div>
 
-    <div class="card">
-
-        <div class="grid">
-
-            <div class="field">
-
-                <label>Vendor ID</label>
-
-                <input
-                    type="number"
-                    [(ngModel)]="risk.vendor_id"
-                    name="vendor_id">
-
-            </div>
-
-            <div class="field">
-
-                <label>Risk Type</label>
-
-                <input
-                    type="text"
-                    [(ngModel)]="risk.risk_type"
-                    name="risk_type">
-
-            </div>
-
-            <div class="field">
-
-                <label>Risk Level</label>
-
-                <select
-                    [(ngModel)]="risk.risk_level"
-                    name="risk_level">
-
-                    <option value="">Select</option>
-                    <option>High</option>
-                    <option>Medium</option>
-                    <option>Low</option>
-
-                </select>
-
-            </div>
-
-            <div class="field">
-
-                <label>Risk Score</label>
-
-                <input
-                    type="number"
-                    [(ngModel)]="risk.risk_score"
-                    name="risk_score">
-
-            </div>
-
-            <div class="field full">
-
-                <label>Description</label>
-
-                <textarea
-                    rows="5"
-                    [(ngModel)]="risk.description"
-                    name="description">
-
-                </textarea>
-
-            </div>
-
-            <div class="field">
-
-                <label>Status</label>
-
-                <select
-                    [(ngModel)]="risk.status"
-                    name="status">
-
-                    <option>Open</option>
-                    <option>Monitoring</option>
-                    <option>Resolved</option>
-
-                </select>
-
-            </div>
-
-        </div>
-
-        <div class="buttons">
-
-            <button
-                class="cancel"
-                routerLink="/risk/list">
-
-                Cancel
-
-            </button>
-
-            <button
-                class="save"
-                (click)="saveRisk()"
-                [disabled]="isSaving">
-
-                {{isSaving ? 'Saving...' : 'Save Risk'}}
-
-            </button>
-
-        </div>
-
+    <div class="header-actions">
+      <button type="button" class="secondary-button" (click)="cancel()">
+        Cancel
+      </button>
     </div>
+  </header>
+
+  <!-- Error Banner -->
+  <div *ngIf="errorMessage" class="error-banner">
+    <span>⚠️</span>
+    <span>{{ errorMessage }}</span>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-state">
+    <div class="loading-spinner"></div>
+    <p>Loading suppliers and risk incident details...</p>
+  </div>
+
+  <!-- Form Card -->
+  <div class="form-card" *ngIf="!loading">
+    <form [formGroup]="riskForm" (ngSubmit)="onSubmit()">
+
+      <div class="form-section">
+        <h2 class="section-title">Risk Identification & Supplier Association</h2>
+        <p class="section-subtitle">Link the risk assessment directly with an existing registered vendor in PostgreSQL.</p>
+
+        <div class="form-grid">
+
+          <!-- Vendor Selection -->
+          <div class="form-group full-width">
+            <label for="vendor_id">Supplier / Vendor <span class="required-mark">*</span></label>
+            <select
+              id="vendor_id"
+              formControlName="vendor_id"
+              [class.input-error]="riskForm.get('vendor_id')?.invalid && riskForm.get('vendor_id')?.touched"
+            >
+              <option [ngValue]="null" disabled>Select a supplier...</option>
+              <option *ngFor="let v of vendors" [ngValue]="v.id">
+                {{ v.company_name }} (ID #{{ v.id }} - {{ v.category }})
+              </option>
+            </select>
+            <span class="error-text" *ngIf="riskForm.get('vendor_id')?.invalid && riskForm.get('vendor_id')?.touched">
+              Supplier selection is required.
+            </span>
+          </div>
+
+          <!-- Risk Type -->
+          <div class="form-group">
+            <label for="risk_type">Risk Category / Type <span class="required-mark">*</span></label>
+            <select
+              id="risk_type"
+              formControlName="risk_type"
+              [class.input-error]="riskForm.get('risk_type')?.invalid && riskForm.get('risk_type')?.touched"
+            >
+              <option *ngFor="let t of riskTypes" [value]="t">{{ t }}</option>
+            </select>
+            <span class="error-text" *ngIf="riskForm.get('risk_type')?.invalid && riskForm.get('risk_type')?.touched">
+              Risk category is required.
+            </span>
+          </div>
+
+          <!-- Severity -->
+          <div class="form-group">
+            <label for="severity">Severity Level <span class="required-mark">*</span></label>
+            <select
+              id="severity"
+              formControlName="severity"
+              [class.input-error]="riskForm.get('severity')?.invalid && riskForm.get('severity')?.touched"
+            >
+              <option *ngFor="let s of severityOptions" [value]="s">{{ s }}</option>
+            </select>
+            <span class="error-text" *ngIf="riskForm.get('severity')?.invalid && riskForm.get('severity')?.touched">
+              Severity rating is required.
+            </span>
+          </div>
+
+          <!-- Impact Score -->
+          <div class="form-group">
+            <label for="impact_score">Impact Score (1 - 100) <span class="required-mark">*</span></label>
+            <input
+              type="number"
+              id="impact_score"
+              formControlName="impact_score"
+              min="1"
+              max="100"
+              placeholder="e.g. 65"
+              [class.input-error]="riskForm.get('impact_score')?.invalid && riskForm.get('impact_score')?.touched"
+            />
+            <small class="field-hint">Higher impact score reduces overall supplier reliability rating in real-time.</small>
+            <span class="error-text" *ngIf="riskForm.get('impact_score')?.invalid && riskForm.get('impact_score')?.touched">
+              Enter an impact score between 1 and 100.
+            </span>
+          </div>
+
+          <!-- Lifecycle Status -->
+          <div class="form-group">
+            <label for="status">Incident Status <span class="required-mark">*</span></label>
+            <select
+              id="status"
+              formControlName="status"
+              [class.input-error]="riskForm.get('status')?.invalid && riskForm.get('status')?.touched"
+            >
+              <option *ngFor="let st of statusOptions" [value]="st">{{ st }}</option>
+            </select>
+            <span class="error-text" *ngIf="riskForm.get('status')?.invalid && riskForm.get('status')?.touched">
+              Status is required.
+            </span>
+          </div>
+
+          <!-- Description -->
+          <div class="form-group full-width">
+            <label for="description">Detailed Description & Context <span class="required-mark">*</span></label>
+            <textarea
+              id="description"
+              formControlName="description"
+              rows="4"
+              placeholder="Describe the incident, observed non-compliance, root causes, and recommended mitigation actions..."
+              [class.input-error]="riskForm.get('description')?.invalid && riskForm.get('description')?.touched"
+            ></textarea>
+            <small class="field-hint">Provide specific context regarding orders, dates, or SLA clauses affected.</small>
+            <span class="error-text" *ngIf="riskForm.get('description')?.invalid && riskForm.get('description')?.touched">
+              Description is required (maximum 1000 characters).
+            </span>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Form Actions -->
+      <div class="form-actions">
+        <button type="button" class="secondary-button" (click)="cancel()" [disabled]="submitting">
+          Cancel
+        </button>
+
+        <button type="submit" class="primary-button" [disabled]="submitting || riskForm.invalid">
+          <span *ngIf="submitting" class="button-spinner"></span>
+          <span>{{ submitting ? 'Saving Record...' : (isEditMode ? 'Update Risk Incident' : 'Save Risk Incident') }}</span>
+        </button>
+      </div>
+
+    </form>
+  </div>
 
 </div>

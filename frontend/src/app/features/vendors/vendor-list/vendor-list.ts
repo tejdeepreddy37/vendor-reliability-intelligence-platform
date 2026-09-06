@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -15,8 +15,13 @@ import { VendorService } from '../../../core/services/vendor';
 export class VendorList implements OnInit {
   private vendorService = inject(VendorService);
   private router = inject(Router);
+  private cdr = inject(ChangeDetectorRef);
 
   vendors: Vendor[] = [];
+  selectedVendor: Vendor | null = null;
+  loading = false;
+  actionLoading = false;
+  errorMessage = '';
 
   searchTerm = '';
   statusFilter = 'all';
@@ -26,13 +31,21 @@ export class VendorList implements OnInit {
   }
 
   loadVendors(): void {
+    this.loading = true;
+    this.errorMessage = '';
+
     this.vendorService.getAllVendors().subscribe({
       next: (data) => {
         this.vendors = Array.isArray(data) ? data : [];
+        this.loading = false;
+        this.cdr.markForCheck();
       },
       error: (err) => {
         console.error('Error loading vendors', err);
+        this.errorMessage = err.error?.detail || 'Unable to load vendors from database. Please verify backend connection.';
+        this.loading = false;
         this.vendors = [];
+        this.cdr.markForCheck();
       }
     });
   }
@@ -43,9 +56,11 @@ export class VendorList implements OnInit {
     return this.vendors.filter((vendor) => {
       const matchesSearch =
         !search ||
-        String(vendor.vendor_name ?? '').toLowerCase().includes(search) ||
+        String(vendor.contact_person ?? '').toLowerCase().includes(search) ||
         String(vendor.company_name ?? '').toLowerCase().includes(search) ||
         String(vendor.email ?? '').toLowerCase().includes(search) ||
+        String(vendor.phone ?? '').toLowerCase().includes(search) ||
+        String(vendor.address ?? '').toLowerCase().includes(search) ||
         String(vendor.category ?? '').toLowerCase().includes(search);
 
       const status = String(vendor.status ?? '').trim().toLowerCase();
@@ -61,11 +76,7 @@ export class VendorList implements OnInit {
   get activeCount(): number {
     return this.vendors.filter((vendor) => {
       const status = String(vendor.status ?? '').trim().toLowerCase();
-
-      return vendor.is_active === true ||
-        status === 'active' ||
-        status === 'approved' ||
-        status === 'verified';
+      return vendor.is_active === true || status === 'active' || status === 'approved';
     }).length;
   }
 
@@ -78,7 +89,7 @@ export class VendorList implements OnInit {
 
   getInitials(name: string | undefined): string {
     if (!name) {
-      return 'V';
+      return 'VR';
     }
 
     const parts = name
@@ -86,14 +97,15 @@ export class VendorList implements OnInit {
       .split(/\s+/)
       .filter(Boolean);
 
-    if (parts.length === 1) {
+    if (parts.length >= 2) {
+      return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase();
+    }
+
+    if (parts.length === 1 && parts[0].length >= 2) {
       return parts[0].substring(0, 2).toUpperCase();
     }
 
-    return (
-      parts[0].charAt(0) +
-      parts[parts.length - 1].charAt(0)
-    ).toUpperCase();
+    return (parts[0] || 'V').toUpperCase();
   }
 
   getStatusClass(status: string | undefined): string {
@@ -101,11 +113,7 @@ export class VendorList implements OnInit {
       .trim()
       .toLowerCase();
 
-    if (
-      normalized === 'active' ||
-      normalized === 'approved' ||
-      normalized === 'verified'
-    ) {
+    if (normalized === 'active' || normalized === 'approved') {
       return 'status-active';
     }
 
@@ -113,15 +121,21 @@ export class VendorList implements OnInit {
       return 'status-pending';
     }
 
-    if (
-      normalized === 'inactive' ||
-      normalized === 'rejected' ||
-      normalized === 'suspended'
-    ) {
+    if (normalized === 'inactive' || normalized === 'rejected' || normalized === 'suspended') {
       return 'status-inactive';
     }
 
     return 'status-neutral';
+  }
+
+  viewDetails(vendor: Vendor): void {
+    this.selectedVendor = vendor;
+    this.cdr.markForCheck();
+  }
+
+  closeDetails(): void {
+    this.selectedVendor = null;
+    this.cdr.markForCheck();
   }
 
   addVendor(): void {
@@ -132,11 +146,48 @@ export class VendorList implements OnInit {
     this.router.navigate(['/vendors/edit', id]);
   }
 
+  changeStatus(vendor: Vendor, newStatus: string): void {
+    if (!vendor.id) return;
+
+    this.actionLoading = true;
+    const updatedPayload: Vendor = {
+      ...vendor,
+      status: newStatus,
+      is_active: newStatus === 'Active'
+    };
+
+    this.vendorService.updateVendor(vendor.id, updatedPayload).subscribe({
+      next: (res) => {
+        this.actionLoading = false;
+        if (this.selectedVendor && this.selectedVendor.id === vendor.id) {
+          this.selectedVendor = { ...this.selectedVendor, status: newStatus, is_active: newStatus === 'Active' };
+        }
+        this.loadVendors();
+      },
+      error: (err) => {
+        this.actionLoading = false;
+        alert(err.error?.detail || 'Failed to update vendor status');
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
   deleteVendor(id: number): void {
-    if (confirm('Are you sure you want to delete this vendor?')) {
+    if (confirm('Are you sure you want to delete this vendor? This will remove the record from PostgreSQL.')) {
+      this.actionLoading = true;
       this.vendorService.deleteVendor(id).subscribe({
-        next: () => this.loadVendors(),
-        error: (err) => console.error(err)
+        next: () => {
+          this.actionLoading = false;
+          if (this.selectedVendor && this.selectedVendor.id === id) {
+            this.selectedVendor = null;
+          }
+          this.loadVendors();
+        },
+        error: (err) => {
+          this.actionLoading = false;
+          alert(err.error?.detail || 'Failed to delete vendor');
+          this.cdr.markForCheck();
+        }
       });
     }
   }

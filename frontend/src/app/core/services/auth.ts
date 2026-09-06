@@ -1,80 +1,44 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
 
 import { LoginRequest } from '../models/login.model';
 import { RegisterRequest } from '../models/register.model';
 import { Token } from '../models/token.model';
 import { User } from '../models/user.model';
 
+import { AuthService } from './auth.service';
+
 @Injectable({
   providedIn: 'root'
 })
 export class Auth {
 
-  private http = inject(HttpClient);
+  private readonly authService = inject(AuthService);
 
-  private readonly API = 'http://127.0.0.1:8000/auth';
-
-  /**
-   * Login
-   */
-  login(data: LoginRequest): Observable<Token> {
-    return this.http.post<Token>(
-      `${this.API}/login`,
-      data
-    );
+  login(data: LoginRequest) {
+    return this.authService.login(data);
   }
 
-  /**
-   * Register
-   */
-  register(data: RegisterRequest): Observable<User> {
-    return this.http.post<User>(
-      `${this.API}/register`,
-      data
-    );
+  register(data: RegisterRequest) {
+    return this.authService.register(data);
   }
 
-  /**
-   * Get Current Logged-in User
-   */
-  me(): Observable<User> {
-    return this.http.get<User>(
-      `${this.API}/me`
-    );
+  me() {
+    return this.authService.getCurrentUser();
   }
 
-  /**
-   * Save JWT Token
-   */
   saveToken(token: string): void {
-    localStorage.setItem('access_token', token);
+    this.authService.saveToken(token);
   }
 
-  /**
-   * Get JWT Token
-   */
   getToken(): string | null {
-    return localStorage.getItem('access_token');
+    return this.authService.getToken();
   }
 
-  /**
-   * Check Login Status
-   */
   isLoggedIn(): boolean {
-    return this.getToken() !== null;
+    return this.authService.isLoggedIn();
   }
 
-  /**
-   * Logout
-   */
   logout(): void {
-
-    localStorage.removeItem('access_token');
-
-    window.location.href = '/login';
-
+    this.authService.logout();
   }
-
 }

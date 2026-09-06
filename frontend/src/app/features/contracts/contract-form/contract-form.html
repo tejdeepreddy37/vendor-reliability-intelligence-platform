@@ -1,199 +1,214 @@
-<div class="form-page-container">
+<div class="contract-form-page">
 
-  <div class="form-header">
+  <!-- BACKGROUND AMBIENT GLOWS -->
+  <div class="ambient-glow glow-top-left" aria-hidden="true"></div>
+  <div class="ambient-glow glow-top-right" aria-hidden="true"></div>
 
-    <a
-      routerLink="/contracts"
-      class="back-link"
-    >
-      &larr; Back to Contracts
-    </a>
+  <div class="form-container">
 
-    <h1 class="page-title">
-      {{ isEditMode ? 'Edit Contract' : 'Add Contract' }}
-    </h1>
-
-    <p class="page-subtitle">
-      Configure agreement terms and vendor assignment.
-    </p>
-
-  </div>
-
-  <div
-    *ngIf="errorMessage"
-    class="alert-banner"
-  >
-    {{ errorMessage }}
-  </div>
-
-  <div class="form-card">
-
-    <form
-      [formGroup]="contractForm"
-      (ngSubmit)="onSubmit()"
-    >
-
-      <div class="form-grid">
-
-        <div class="form-group">
-          <label for="contract_number">
-            Contract Number *
-          </label>
-
-          <input
-            id="contract_number"
-            type="text"
-            formControlName="contract_number"
-            placeholder="e.g. CNT-2026-001"
-          />
-        </div>
-
-        <div class="form-group">
-          <label for="vendor_id">
-            Vendor *
-          </label>
-
-          <select
-            id="vendor_id"
-            formControlName="vendor_id"
-          >
-            <option
-              [ngValue]="null"
-              disabled
-            >
-              Select Vendor
-            </option>
-
-            <option
-              *ngFor="let vendor of vendors"
-              [value]="vendor.id"
-            >
-              {{ vendor.company_name }}
-            </option>
-          </select>
-        </div>
-
-        <div class="form-group full-width">
-          <label for="contract_title">
-            Contract Title *
-          </label>
-
-          <input
-            id="contract_title"
-            type="text"
-            formControlName="contract_title"
-            placeholder="e.g. Annual Maintenance Contract"
-          />
-        </div>
-
-        <div class="form-group">
-          <label for="contract_value">
-            Contract Value ($) *
-          </label>
-
-          <input
-            id="contract_value"
-            type="number"
-            step="0.01"
-            formControlName="contract_value"
-            placeholder="0.00"
-          />
-        </div>
-
-        <div class="form-group">
-          <label for="status">
-            Status *
-          </label>
-
-          <select
-            id="status"
-            formControlName="status"
-          >
-            <option value="draft">
-              Draft
-            </option>
-
-            <option value="active">
-              Active
-            </option>
-
-            <option value="under_review">
-              Under Review
-            </option>
-
-            <option value="expired">
-              Expired
-            </option>
-
-            <option value="terminated">
-              Terminated
-            </option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label for="start_date">
-            Start Date *
-          </label>
-
-          <input
-            id="start_date"
-            type="date"
-            formControlName="start_date"
-          />
-        </div>
-
-        <div class="form-group">
-          <label for="end_date">
-            End Date *
-          </label>
-
-          <input
-            id="end_date"
-            type="date"
-            formControlName="end_date"
-          />
-        </div>
-
-        <div class="form-group full-width">
-          <label for="terms_conditions">
-            Terms and Conditions
-          </label>
-
-          <textarea
-            id="terms_conditions"
-            rows="5"
-            formControlName="terms_conditions"
-            placeholder="Enter contract terms, milestones or notes..."
-          ></textarea>
-        </div>
-
+    <header class="form-header">
+      <div class="form-header-content">
+        <span class="eyebrow">PROCUREMENT / CONTRACT MANAGEMENT</span>
+        <h1>{{ isEditMode ? 'Edit Contract Agreement' : 'Create Contract Agreement' }}</h1>
+        <p>{{ isEditMode ? 'Update agreement parameters, validity terms, and financial valuation.' : 'Draft and register a formal supplier contract with legal validity and commitment schedule.' }}</p>
       </div>
 
-      <div class="form-footer">
+      <button type="button" class="btn-saas-action btn-secondary" (click)="cancel()">
+        ← Back to Contracts
+      </button>
+    </header>
 
+    <!-- Error Banner -->
+    <div *ngIf="errorMessage" class="error-banner">
+      <div class="error-content">
+        <span class="error-badge">!</span>
+        <div class="error-text">
+          <strong>Validation Error</strong>
+          <p>{{ errorMessage }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div *ngIf="loading" class="form-loading">
+      <div class="loading-spinner"></div>
+      <p>Loading contract agreement data and supplier directory...</p>
+    </div>
+
+    <form *ngIf="!loading" [formGroup]="contractForm" (ngSubmit)="onSubmit()" class="contract-form-card saas-card" novalidate>
+
+      <div class="form-section">
+        <h2 class="section-title">Contract Identification & Supplier Assignment</h2>
+        <div class="form-grid">
+
+          <!-- Contract Number -->
+          <div class="form-group">
+            <label for="contract_number">
+              Contract Reference # <span class="required">*</span>
+            </label>
+            <input
+              id="contract_number"
+              type="text"
+              formControlName="contract_number"
+              placeholder="e.g. CNT-2026-001"
+              [class.invalid]="contractForm.get('contract_number')?.invalid && contractForm.get('contract_number')?.touched"
+              [readonly]="isEditMode"
+            />
+            <div *ngIf="contractForm.get('contract_number')?.invalid && contractForm.get('contract_number')?.touched" class="field-error">
+              Contract reference number is required.
+            </div>
+          </div>
+
+          <!-- Vendor Selection (Real PostgreSQL vendors) -->
+          <div class="form-group">
+            <label for="vendor_id">
+              Associated Supplier / Vendor <span class="required">*</span>
+            </label>
+            <select
+              id="vendor_id"
+              formControlName="vendor_id"
+              [class.invalid]="contractForm.get('vendor_id')?.invalid && contractForm.get('vendor_id')?.touched"
+              [disabled]="isEditMode"
+            >
+              <option [ngValue]="null" disabled>Select supplier from directory</option>
+              <option *ngFor="let vendor of vendors" [ngValue]="vendor.id">
+                {{ vendor.company_name }} (ID #{{ vendor.id }}) • {{ vendor.category }}
+              </option>
+            </select>
+            <div *ngIf="contractForm.get('vendor_id')?.invalid && contractForm.get('vendor_id')?.touched" class="field-error">
+              Please select a supplier from the directory.
+            </div>
+          </div>
+
+          <!-- Contract Title -->
+          <div class="form-group full-width">
+            <label for="contract_name">
+              Contract Title & Scope <span class="required">*</span>
+            </label>
+            <input
+              id="contract_name"
+              type="text"
+              formControlName="contract_name"
+              placeholder="e.g. Master Services Agreement & Cloud SLA 2026"
+              [class.invalid]="contractForm.get('contract_name')?.invalid && contractForm.get('contract_name')?.touched"
+            />
+            <div *ngIf="contractForm.get('contract_name')?.invalid && contractForm.get('contract_name')?.touched" class="field-error">
+              Contract title and scope description are required.
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h2 class="section-title">Term Timeline & Financial Valuation (INR)</h2>
+        <div class="form-grid">
+
+          <!-- Start Date -->
+          <div class="form-group">
+            <label for="start_date">
+              Effective Start Date <span class="required">*</span>
+            </label>
+            <input
+              id="start_date"
+              type="date"
+              formControlName="start_date"
+              [class.invalid]="contractForm.get('start_date')?.invalid && contractForm.get('start_date')?.touched"
+            />
+            <div *ngIf="contractForm.get('start_date')?.invalid && contractForm.get('start_date')?.touched" class="field-error">
+              Effective start date is required.
+            </div>
+          </div>
+
+          <!-- End Date -->
+          <div class="form-group">
+            <label for="end_date">
+              Expiration / End Date <span class="required">*</span>
+            </label>
+            <input
+              id="end_date"
+              type="date"
+              formControlName="end_date"
+              [class.invalid]="contractForm.get('end_date')?.invalid && contractForm.get('end_date')?.touched"
+            />
+            <div *ngIf="contractForm.get('end_date')?.invalid && contractForm.get('end_date')?.touched" class="field-error">
+              Contract end / expiration date is required.
+            </div>
+          </div>
+
+          <!-- Contract Value (INR) -->
+          <div class="form-group">
+            <label for="contract_value">
+              Total Contract Commitment (₹ INR) <span class="required">*</span>
+            </label>
+            <input
+              id="contract_value"
+              type="number"
+              step="0.01"
+              min="0"
+              formControlName="contract_value"
+              placeholder="e.g. 1500000.00"
+              [class.invalid]="contractForm.get('contract_value')?.invalid && contractForm.get('contract_value')?.touched"
+            />
+            <div *ngIf="contractForm.get('contract_value')?.invalid && contractForm.get('contract_value')?.touched" class="field-error">
+              Valid positive contract value in INR is required.
+            </div>
+          </div>
+
+          <!-- Status -->
+          <div class="form-group">
+            <label for="status">
+              Agreement Legal Status <span class="required">*</span>
+            </label>
+            <select
+              id="status"
+              formControlName="status"
+            >
+              <option value="Active">Active (Binding)</option>
+              <option value="Pending">Pending Review</option>
+              <option value="Expired">Expired</option>
+              <option value="Terminated">Terminated</option>
+            </select>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h2 class="section-title">Terms, Conditions & Legal Specifications</h2>
+        <div class="form-grid">
+          <div class="form-group full-width">
+            <label for="terms_conditions">
+              Terms & Conditions / Scope of Work
+            </label>
+            <textarea
+              id="terms_conditions"
+              rows="4"
+              formControlName="terms_conditions"
+              placeholder="Enter contractual obligations, SLA terms, payment milestones, or termination clauses..."
+            ></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-actions">
         <button
           type="button"
-          class="btn btn-outline"
-          routerLink="/contracts"
+          class="btn-saas-action btn-secondary"
+          (click)="cancel()"
+          [disabled]="submitting"
         >
           Cancel
         </button>
 
         <button
           type="submit"
-          class="btn btn-primary"
-          [disabled]="submitting"
+          class="btn-saas-action btn-primary-cta"
+          [disabled]="submitting || contractForm.invalid"
         >
-          {{
-            submitting
-              ? 'Saving...'
-              : (isEditMode
-                  ? 'Save Changes'
-                  : 'Create Contract')
-          }}
+          <span *ngIf="submitting" class="button-spinner"></span>
+          {{ submitting ? 'Saving Contract...' : (isEditMode ? 'Save Contract Changes' : 'Create Contract Agreement') }}
         </button>
-
       </div>
 
     </form>

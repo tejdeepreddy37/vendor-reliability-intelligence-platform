@@ -1,90 +1,223 @@
-<div class="container">
+<div class="po-form-page">
 
-    <h2>Create Purchase Order</h2>
+  <div class="form-container">
 
-    <div class="form">
+    <header class="form-header">
+      <div class="form-header-content">
+        <span class="eyebrow">PROCUREMENT / ORDER FULFILLMENT</span>
+        <h1>{{ isEditMode ? 'Edit Purchase Order' : 'Create Purchase Order' }}</h1>
+        <p>{{ isEditMode ? 'Update purchase order details, delivery schedules, and fulfillment status.' : 'Generate a formal purchase order associated with an approved supplier and procurement requisition.' }}</p>
+      </div>
 
-        <label>Purchase Order Number</label>
+      <button type="button" class="back-link-btn" (click)="cancel()">
+        ← Back to Purchase Orders
+      </button>
+    </header>
 
-        <input
-            type="text"
-            [(ngModel)]="purchaseOrder.poNumber">
+    <!-- Error Banner -->
+    <div *ngIf="errorMessage" class="error-banner">
+      <span class="err-icon">⚠️</span>
+      <span class="err-text">{{ errorMessage }}</span>
+    </div>
 
-        <label>Vendor</label>
+    <!-- Loading State -->
+    <div *ngIf="loading" class="form-loading">
+      <div class="loading-spinner"></div>
+      <p>Loading order data, supplier directory, and requisitions...</p>
+    </div>
 
-        <select
-            [(ngModel)]="purchaseOrder.vendor">
+    <form *ngIf="!loading" [formGroup]="poForm" (ngSubmit)="onSubmit()" class="po-form-card" novalidate>
 
-            <option value="">Select Vendor</option>
+      <div class="form-section">
+        <h2 class="section-title">Order Identification & Association</h2>
+        <div class="form-grid">
 
-            <option>ABC Technologies</option>
-            <option>XYZ Solutions</option>
-            <option>Tech Systems</option>
+          <!-- PO Number -->
+          <div class="form-group">
+            <label for="po_number">
+              PO Number <span class="required">*</span>
+            </label>
+            <input
+              id="po_number"
+              type="text"
+              formControlName="po_number"
+              placeholder="e.g. PO-2026-001"
+              [class.invalid]="poForm.get('po_number')?.invalid && poForm.get('po_number')?.touched"
+            />
+            <div *ngIf="poForm.get('po_number')?.invalid && poForm.get('po_number')?.touched" class="field-error">
+              Purchase order number is required (max 50 characters).
+            </div>
+          </div>
 
-        </select>
+          <!-- Vendor Selection (Real PostgreSQL vendors) -->
+          <div class="form-group">
+            <label for="vendor_id">
+              Associated Supplier / Vendor <span class="required">*</span>
+            </label>
+            <select
+              id="vendor_id"
+              formControlName="vendor_id"
+              [class.invalid]="poForm.get('vendor_id')?.invalid && poForm.get('vendor_id')?.touched"
+            >
+              <option [ngValue]="null" disabled>Select supplier from directory</option>
+              <option *ngFor="let vendor of vendors" [ngValue]="vendor.id">
+                {{ vendor.company_name }} (ID #{{ vendor.id }}) • {{ vendor.category }}
+              </option>
+            </select>
+            <div *ngIf="poForm.get('vendor_id')?.invalid && poForm.get('vendor_id')?.touched" class="field-error">
+              Please select an active supplier from the directory.
+            </div>
+          </div>
 
-        <label>Item Name</label>
-
-        <input
-            type="text"
-            [(ngModel)]="purchaseOrder.item">
-
-        <label>Quantity</label>
-
-        <input
-            type="number"
-            [(ngModel)]="purchaseOrder.quantity">
-
-        <label>Unit Price</label>
-
-        <input
-            type="number"
-            [(ngModel)]="purchaseOrder.unitPrice">
-
-        <label>Order Date</label>
-
-        <input
-            type="date"
-            [(ngModel)]="purchaseOrder.orderDate">
-
-        <label>Expected Delivery</label>
-
-        <input
-            type="date"
-            [(ngModel)]="purchaseOrder.expectedDelivery">
-
-        <label>Status</label>
-
-        <select
-            [(ngModel)]="purchaseOrder.status">
-
-            <option>Pending</option>
-            <option>Approved</option>
-            <option>Delivered</option>
-            <option>Cancelled</option>
-
-        </select>
-
-        <div class="buttons">
-
-            <button
-                class="save-btn"
-                (click)="savePurchaseOrder()">
-
-                Save
-
-            </button>
-
-            <button
-                class="reset-btn"
-                (click)="resetForm()">
-
-                Reset
-
-            </button>
+          <!-- Procurement Requisition (Real PostgreSQL procurements) -->
+          <div class="form-group full-width">
+            <label for="procurement_id">
+              Procurement Requisition Reference <span class="required">*</span>
+            </label>
+            <select
+              id="procurement_id"
+              formControlName="procurement_id"
+              [class.invalid]="poForm.get('procurement_id')?.invalid && poForm.get('procurement_id')?.touched"
+            >
+              <option [ngValue]="null" disabled>Select procurement requisition</option>
+              <option *ngFor="let proc of procurements" [ngValue]="proc.id">
+                {{ proc.request_number }} — {{ proc.title }} (ID #{{ proc.id }})
+              </option>
+            </select>
+            <div *ngIf="poForm.get('procurement_id')?.invalid && poForm.get('procurement_id')?.touched" class="field-error">
+              Please associate this order with a procurement requisition.
+            </div>
+          </div>
 
         </div>
+      </div>
 
-    </div>
+      <div class="form-section">
+        <h2 class="section-title">Schedule & Financial Information</h2>
+        <div class="form-grid">
+
+          <!-- Order Date -->
+          <div class="form-group">
+            <label for="order_date">
+              Order Placement Date <span class="required">*</span>
+            </label>
+            <input
+              id="order_date"
+              type="date"
+              formControlName="order_date"
+              [class.invalid]="poForm.get('order_date')?.invalid && poForm.get('order_date')?.touched"
+            />
+            <div *ngIf="poForm.get('order_date')?.invalid && poForm.get('order_date')?.touched" class="field-error">
+              Order date is required.
+            </div>
+          </div>
+
+          <!-- Expected Delivery -->
+          <div class="form-group">
+            <label for="expected_delivery">
+              Expected Delivery Date
+            </label>
+            <input
+              id="expected_delivery"
+              type="date"
+              formControlName="expected_delivery"
+            />
+          </div>
+
+          <!-- Total Amount -->
+          <div class="form-group">
+            <label for="total_amount">
+              Total Order Amount (₹) <span class="required">*</span>
+            </label>
+            <input
+              id="total_amount"
+              type="number"
+              step="0.01"
+              min="0"
+              formControlName="total_amount"
+              placeholder="e.g. 45000.00"
+              [class.invalid]="poForm.get('total_amount')?.invalid && poForm.get('total_amount')?.touched"
+            />
+            <div *ngIf="poForm.get('total_amount')?.invalid && poForm.get('total_amount')?.touched" class="field-error">
+              Valid positive order amount is required.
+            </div>
+          </div>
+
+          <!-- Payment Status -->
+          <div class="form-group">
+            <label for="payment_status">
+              Payment Status <span class="required">*</span>
+            </label>
+            <select
+              id="payment_status"
+              formControlName="payment_status"
+            >
+              <option value="Pending">Pending</option>
+              <option value="Partial">Partial</option>
+              <option value="Completed">Completed</option>
+              <option value="Overdue">Overdue</option>
+            </select>
+          </div>
+
+          <!-- Order Status -->
+          <div class="form-group full-width">
+            <label for="status">
+              Order Fulfillment Status <span class="required">*</span>
+            </label>
+            <select
+              id="status"
+              formControlName="status"
+            >
+              <option value="Ordered">Ordered</option>
+              <option value="In Transit">In Transit</option>
+              <option value="Delivered">Delivered</option>
+              <option value="Pending">Pending</option>
+              <option value="Cancelled">Cancelled</option>
+            </select>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h2 class="section-title">Order Notes & Specifications</h2>
+        <div class="form-grid">
+          <div class="form-group full-width">
+            <label for="remarks">
+              Fulfillment Remarks / Instructions
+            </label>
+            <textarea
+              id="remarks"
+              rows="3"
+              formControlName="remarks"
+              placeholder="Enter special delivery instructions, milestone notes, or quality terms..."
+            ></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button
+          type="button"
+          class="secondary-button"
+          (click)="cancel()"
+          [disabled]="submitting"
+        >
+          Cancel
+        </button>
+
+        <button
+          type="submit"
+          class="primary-button"
+          [disabled]="submitting || poForm.invalid"
+        >
+          <span *ngIf="submitting" class="button-spinner"></span>
+          {{ submitting ? 'Saving Order...' : (isEditMode ? 'Save Order Changes' : 'Create Purchase Order') }}
+        </button>
+      </div>
+
+    </form>
+
+  </div>
 
 </div>

@@ -17,6 +17,9 @@ from app.services.notification_service import (
     get_notification_by_id_service,
     update_notification_service,
     delete_notification_service,
+    mark_notification_as_read_service,
+    mark_all_notifications_read_service,
+    sync_procurement_alerts_service,
 )
 
 router = APIRouter(
@@ -38,6 +41,45 @@ def create_notification(
     return create_notification_service(
         db,
         notification,
+    )
+
+
+@router.post(
+    "/sync-alerts",
+    response_model=list[NotificationResponse],
+)
+def sync_procurement_alerts(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return sync_procurement_alerts_service(
+        db,
+        recipient_email=current_user.email,
+    )
+
+
+@router.put(
+    "/read-all",
+)
+def mark_all_notifications_as_read(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return mark_all_notifications_read_service(db)
+
+
+@router.put(
+    "/{notification_id}/read",
+    response_model=NotificationResponse,
+)
+def mark_single_notification_as_read(
+    notification_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return mark_notification_as_read_service(
+        db,
+        notification_id,
     )
 
 

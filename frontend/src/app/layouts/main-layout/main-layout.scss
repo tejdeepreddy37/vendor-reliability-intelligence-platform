@@ -1,45 +1,32 @@
 :host {
   display: block;
-  width: 100vw;
-  height: 100vh;
-  overflow: hidden;
-}
-
-.app-shell {
-  display: flex;
-  flex-direction: column;
   width: 100%;
   height: 100vh;
-  overflow: hidden;
-  background-color: #f5f7fb;
 }
 
-.app-body {
+.main-layout {
   display: flex;
-  flex: 1;
-  min-height: 0;
+  width: 100%;
+  height: 100vh;
+  min-height: 100vh;
+  background: #f7f9fc;
   overflow: hidden;
-  position: relative;
 }
 
-.content {
+.main-area {
   flex: 1;
   min-width: 0;
-  height: 100%;
-  overflow-y: auto;
-  overflow-x: hidden;
-  box-sizing: border-box;
-  background:
-    radial-gradient(
-      circle at 90% 0%,
-      rgba(45, 108, 240, 0.04),
-      transparent 28%
-    ),
-    #f5f7fb;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-@media (max-width: 900px) {
-  .content {
-    overflow-x: hidden;
-  }
+.page-content {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: #f7f9fc;
 }

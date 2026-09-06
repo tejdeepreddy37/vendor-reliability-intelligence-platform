@@ -1,177 +1,517 @@
-<div class="module-container">
+<div class="contract-canvas">
 
-  <div class="module-header">
-    <div class="header-titles">
-      <span class="eyebrow">PROCUREMENT AGREEMENTS</span>
+  <!-- BACKGROUND AMBIENT GLOWS (CSS-ONLY DECORATIVE) -->
+  <div class="ambient-glow glow-top-left" aria-hidden="true"></div>
+  <div class="ambient-glow glow-top-right" aria-hidden="true"></div>
+  <div class="ambient-glow glow-bottom-center" aria-hidden="true"></div>
 
-      <h1 class="title">Contracts</h1>
+  <div class="contract-container">
 
-      <p class="subtitle">
-        Manage supplier contracts, expiry dates, and values.
-      </p>
+    <!-- 1. PAGE HEADER (MATCHING DASHBOARD, VENDORS & PURCHASE ORDERS) -->
+    <header class="page-header">
+      <div class="header-greeting-block">
+        <span class="eyebrow">PROCUREMENT / CONTRACT MANAGEMENT</span>
+        <h1 class="page-title">Contracts & Agreements</h1>
+        <p class="page-subtitle">
+          Manage legal supplier agreements, SLA compliance, commitment values, and renewal lifecycles.
+        </p>
+      </div>
+
+      <div class="header-controls">
+        <div class="live-sync-pill" title="Live PostgreSQL Data Stream">
+          <span class="pulse-dot"></span>
+          <span class="sync-caption">PostgreSQL Live: <strong>{{ contracts.length }} Contracts</strong></span>
+        </div>
+
+        <button
+          type="button"
+          class="btn-saas-action btn-refresh"
+          (click)="loadData()"
+          [disabled]="loading"
+          title="Synchronize contract agreements"
+        >
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" [class.spinning]="loading">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+          </svg>
+          <span>{{ loading ? 'Updating...' : 'Refresh' }}</span>
+        </button>
+
+        <button
+          type="button"
+          class="btn-saas-action btn-primary-cta"
+          (click)="navigateToCreate()"
+        >
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <span>Add Contract</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- ERROR NOTIFICATION BANNER -->
+    <div *ngIf="errorMessage" class="error-banner">
+      <div class="error-content">
+        <span class="error-badge">!</span>
+        <div class="error-text">
+          <strong>Data Synchronization Notice</strong>
+          <p>{{ errorMessage }}</p>
+        </div>
+      </div>
+      <button type="button" class="btn-retry" (click)="loadData()">Retry Sync</button>
     </div>
 
-    <div class="header-actions">
-      <button
-        type="button"
-        class="btn btn-outline"
-        (click)="loadData()"
-        [disabled]="loading"
+    <!-- 2. KPI METRIC STRIP (4-CARD GRID) -->
+    <section class="contract-kpi-grid" aria-label="Contracts summary metrics">
+
+      <!-- Card 1: Total Contracts -->
+      <div class="saas-card ref-kpi-card kpi-cyan">
+        <div class="kpi-accent-bar cyan"></div>
+        <div class="kpi-content-box">
+          <span class="ref-kpi-label">Total Contracts</span>
+          <div class="ref-metric-val">{{ contracts.length }}</div>
+          <div class="ref-trend-wrap">
+            <span class="ref-metric-trend trend-blue">Active Directory</span>
+          </div>
+        </div>
+        <div class="ref-ring-container">
+          <svg viewBox="0 0 36 36" class="ref-ring-svg">
+            <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            <path class="ring-stroke stroke-cyan" stroke-dasharray="100, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+          </svg>
+          <span class="ring-center-text">{{ contracts.length }}</span>
+        </div>
+      </div>
+
+      <!-- Card 2: Contract Portfolio Spend -->
+      <div class="saas-card ref-kpi-card kpi-emerald">
+        <div class="kpi-accent-bar emerald"></div>
+        <div class="kpi-content-box">
+          <span class="ref-kpi-label">Contract Portfolio Spend</span>
+          <div class="ref-metric-val currency-val">₹{{ totalContractValue | number:'1.0-0' }}</div>
+          <div class="ref-trend-wrap">
+            <span class="ref-metric-trend trend-green">Committed INR</span>
+          </div>
+        </div>
+        <div class="ref-ring-container">
+          <svg viewBox="0 0 36 36" class="ref-ring-svg">
+            <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            <path class="ring-stroke stroke-green" stroke-dasharray="100, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+          </svg>
+          <span class="ring-center-text">₹</span>
+        </div>
+      </div>
+
+      <!-- Card 3: Active Agreements -->
+      <div class="saas-card ref-kpi-card kpi-blue">
+        <div class="kpi-accent-bar blue"></div>
+        <div class="kpi-content-box">
+          <span class="ref-kpi-label">Active Agreements</span>
+          <div class="ref-metric-val">{{ activeContractsCount }}</div>
+          <div class="ref-trend-wrap">
+            <span class="ref-metric-trend trend-blue">Legally Binding</span>
+          </div>
+        </div>
+        <div class="ref-ring-container">
+          <svg viewBox="0 0 36 36" class="ref-ring-svg">
+            <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            <path
+              class="ring-stroke stroke-blue"
+              [attr.stroke-dasharray]="((activeContractsCount / (contracts.length || 1)) * 100) + ', 100'"
+              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+            />
+          </svg>
+          <span class="ring-center-text">{{ activeContractsCount }}</span>
+        </div>
+      </div>
+
+      <!-- Card 4: Expiring in 30 Days (Filterable) -->
+      <div
+        class="saas-card ref-kpi-card kpi-amber"
+        [class.active-filter-card]="showOnlyExpiring"
+        (click)="toggleExpiringFilter()"
+        title="Click to toggle 30-day expiring filter"
       >
-        Refresh
-      </button>
+        <div class="kpi-accent-bar amber"></div>
+        <div class="kpi-content-box">
+          <span class="ref-kpi-label">Expiring in 30 Days</span>
+          <div class="ref-metric-val">{{ expiringCount }}</div>
+          <div class="ref-trend-wrap">
+            <span class="ref-metric-trend trend-amber">{{ showOnlyExpiring ? 'Filter Active' : 'Action Required' }}</span>
+          </div>
+        </div>
+        <div class="ref-ring-container">
+          <svg viewBox="0 0 36 36" class="ref-ring-svg">
+            <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            <path
+              class="ring-stroke stroke-amber"
+              [attr.stroke-dasharray]="((expiringCount / (contracts.length || 1)) * 100) + ', 100'"
+              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+            />
+          </svg>
+          <span class="ring-center-text">{{ expiringCount }}</span>
+        </div>
+      </div>
 
-      <button
-        type="button"
-        class="btn btn-primary"
-        (click)="navigateToCreate()"
-      >
-        + Add Contract
-      </button>
-    </div>
-  </div>
+    </section>
 
-  <div *ngIf="error" class="alert-banner">
-    {{ errorMessage }}
-  </div>
+    <!-- 3. CONTRACT INTELLIGENCE DIRECTORY WORKSPACE CARD -->
+    <section class="saas-card table-section-card">
 
-  <div class="filter-bar">
+      <div class="card-head-row">
+        <div class="card-title-group">
+          <h2 class="card-main-title">Contract Intelligence Directory</h2>
+          <span class="card-subtitle-tag">{{ filteredContracts.length }} agreement(s) matching filters</span>
+        </div>
 
-    <div class="search-box">
-      <input
-        type="text"
-        placeholder="Search by Contract #, Title, Vendor..."
-        [(ngModel)]="searchTerm"
-        (input)="applyFilters()"
-      />
-    </div>
+        <div class="toolbar-controls">
+          <div class="search-box">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="11" cy="11" r="7"></circle>
+              <line x1="16.5" y1="16.5" x2="21" y2="21"></line>
+            </svg>
+            <input
+              type="text"
+              [(ngModel)]="searchTerm"
+              placeholder="Search contract #, title, vendor..."
+              aria-label="Search contracts"
+            />
+          </div>
 
-    <div class="filters">
-      <select
-        [(ngModel)]="statusFilter"
-        (change)="applyFilters()"
-      >
-        <option value="all">All Statuses</option>
-        <option value="draft">Draft</option>
-        <option value="active">Active</option>
-        <option value="under_review">Under Review</option>
-        <option value="expired">Expired</option>
-        <option value="terminated">Terminated</option>
-      </select>
-    </div>
-
-  </div>
-
-  <div class="table-card">
-
-    <div *ngIf="loading" class="loading-state">
-      <span>Loading contracts...</span>
-    </div>
-
-    <div
-      *ngIf="!loading && filteredContracts.length === 0"
-      class="empty-state"
-    >
-      <p>No contracts found.</p>
-    </div>
-
-    <div
-      *ngIf="!loading && filteredContracts.length > 0"
-      class="table-responsive"
-    >
-      <table class="data-table">
-
-        <thead>
-          <tr>
-            <th>Contract #</th>
-            <th>Title</th>
-            <th>Vendor</th>
-            <th>Value</th>
-            <th>Start Date</th>
-            <th>End Date</th>
-            <th>Status</th>
-            <th class="actions-th">Actions</th>
-          </tr>
-        </thead>
-
-        <tbody>
-
-          <tr
-            *ngFor="let contract of filteredContracts"
-            class="clickable-row"
-            (click)="viewDetails(contract.id!)"
+          <select
+            class="status-filter-select"
+            [(ngModel)]="statusFilter"
+            (ngModelChange)="showOnlyExpiring = false"
+            aria-label="Filter contracts by status"
           >
+            <option value="all">All Statuses</option>
+            <option value="active">Active</option>
+            <option value="expiring">Expiring Soon (30 Days)</option>
+            <option value="pending">Pending / Review</option>
+            <option value="expired">Expired</option>
+            <option value="terminated">Terminated</option>
+          </select>
+        </div>
+      </div>
 
-            <td class="contract-number">
-              {{ contract.contract_number }}
-            </td>
+      <!-- Loading State -->
+      <div *ngIf="loading" class="loading-state">
+        <div class="loading-spinner"></div>
+        <p>Synchronizing real contract agreements from PostgreSQL...</p>
+      </div>
 
-            <td class="contract-title">
-              {{ contract.contract_title }}
-            </td>
+      <!-- Contracts Table -->
+      <div class="table-scroll-container" *ngIf="!loading && filteredContracts.length > 0">
+        <table class="reference-data-table">
+          <thead>
+            <tr>
+              <th>CONTRACT IDENTIFIER</th>
+              <th>CONTRACT TITLE & SCOPE</th>
+              <th>SUPPLIER / VENDOR</th>
+              <th>START DATE</th>
+              <th>EXPIRATION DATE</th>
+              <th>CONTRACT VALUE (INR)</th>
+              <th>LEGAL STATUS</th>
+              <th class="cell-align-right">ACTIONS</th>
+            </tr>
+          </thead>
 
-            <td>
-              {{ getVendorName(contract) }}
-            </td>
+          <tbody>
+            <tr *ngFor="let contract of filteredContracts">
+              <!-- Contract Identifier -->
+              <td>
+                <div class="contract-identity-cell">
+                  <div class="contract-monogram-circle">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                      <polyline points="14 2 14 8 20 8"></polyline>
+                      <line x1="16" y1="13" x2="8" y2="13"></line>
+                      <line x1="16" y1="17" x2="8" y2="17"></line>
+                    </svg>
+                  </div>
+                  <div class="contract-text-stack">
+                    <strong class="contract-number-strong">{{ contract.contract_number }}</strong>
+                    <span class="contract-id-sub">Contract ID #{{ contract.id }}</span>
+                  </div>
+                </div>
+              </td>
 
-            <td class="amount">
-              ${{ contract.contract_value | number:'1.2-2' }}
-            </td>
+              <!-- Contract Title & Scope -->
+              <td>
+                <div class="contract-title-stack">
+                  <span class="contract-title-strong" [title]="contract.contract_title || contract.contract_name || 'Contract Agreement'">
+                    {{ contract.contract_title || contract.contract_name || 'Contract Agreement' }}
+                  </span>
+                  <span class="contract-scope-hint" *ngIf="contract.terms_conditions" [title]="contract.terms_conditions">
+                    {{ contract.terms_conditions }}
+                  </span>
+                </div>
+              </td>
 
-            <td>
-              {{ contract.start_date | date:'mediumDate' }}
-            </td>
+              <!-- Supplier / Vendor -->
+              <td>
+                <div class="supplier-identity-cell">
+                  <div class="supplier-monogram-circle">
+                    {{ getInitials(getVendorName(contract)) }}
+                  </div>
+                  <div class="supplier-text-stack">
+                    <strong class="supplier-name-strong">{{ getVendorName(contract) }}</strong>
+                    <span class="supplier-category-span">
+                      {{ getVendorCategory(contract.vendor_id) }} • #{{ contract.vendor_id }}
+                    </span>
+                  </div>
+                </div>
+              </td>
 
-            <td>
-              <span>
-                {{ contract.end_date | date:'mediumDate' }}
+              <!-- Start Date -->
+              <td>
+                <div class="date-schedule-cell">
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                  </svg>
+                  <span>{{ contract.start_date | date:'mediumDate' }}</span>
+                </div>
+              </td>
+
+              <!-- Expiration Date -->
+              <td>
+                <div class="date-schedule-cell">
+                  <div class="date-row">
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                      <line x1="16" y1="2" x2="16" y2="6"></line>
+                      <line x1="8" y1="2" x2="8" y2="6"></line>
+                      <line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
+                    <span class="end-date-text">{{ contract.end_date | date:'mediumDate' }}</span>
+                  </div>
+                  <span *ngIf="isExpiringSoon(contract.end_date) && (contract.status || 'Active').toLowerCase() === 'active'" class="expiring-badge">
+                    Expiring Soon
+                  </span>
+                  <span *ngIf="isExpired(contract.end_date)" class="expired-badge">
+                    Expired
+                  </span>
+                </div>
+              </td>
+
+              <!-- Contract Value (INR) -->
+              <td>
+                <div class="valuation-cell">
+                  <strong class="val-inr">₹{{ contract.contract_value | number:'1.2-2' }}</strong>
+                  <span class="val-sub">INR COMMITMENT</span>
+                </div>
+              </td>
+
+              <!-- Legal Status -->
+              <td>
+                <span class="status-pill" [ngClass]="getStatusClass(contract.status, contract.end_date)">
+                  <span class="status-dot"></span>
+                  <span>{{ contract.status || 'Active' }}</span>
+                </span>
+              </td>
+
+              <!-- Actions -->
+              <td class="cell-align-right">
+                <div class="row-actions-group">
+                  <button
+                    type="button"
+                    class="action-btn action-view"
+                    (click)="viewDetails(contract)"
+                    title="Inspect contract dossier"
+                  >
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                      <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                    <span>Inspect</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    class="action-btn action-edit"
+                    (click)="editContract(contract.id!)"
+                    title="Edit contract terms"
+                  >
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg>
+                  </button>
+
+                  <button
+                    type="button"
+                    class="action-btn action-delete"
+                    (click)="deleteContract($event, contract.id!)"
+                    title="Delete contract"
+                  >
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="3 6 5 6 21 6"></polyline>
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Empty State -->
+      <div class="empty-state" *ngIf="!loading && filteredContracts.length === 0">
+        <div class="empty-icon-circle">
+          <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+          </svg>
+        </div>
+
+        <h3 class="empty-title">
+          {{ contracts.length === 0 ? 'No contract agreements recorded' : 'No matching contract records' }}
+        </h3>
+
+        <p class="empty-desc">
+          {{
+            contracts.length === 0
+              ? 'Initialize formal supplier contracts to monitor validity timelines, SLA compliance, and commitments.'
+              : 'Try clearing search terms or selecting another contract legal status.'
+          }}
+        </p>
+
+        <button
+          *ngIf="contracts.length === 0"
+          type="button"
+          class="btn-saas-action btn-primary-cta"
+          (click)="navigateToCreate()"
+        >
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <span>Create First Contract</span>
+        </button>
+      </div>
+
+    </section>
+
+    <!-- 4. CONTRACT INTELLIGENCE DOSSIER MODAL -->
+    <div class="modal-overlay" *ngIf="selectedContract" (click)="closeDetails()">
+      <div class="modal-card" (click)="$event.stopPropagation()">
+        
+        <div class="modal-header">
+          <div class="modal-header-info">
+            <span class="eyebrow">CONTRACT DOSSIER</span>
+            <h2>{{ selectedContract.contract_title || selectedContract.contract_name || selectedContract.contract_number }}</h2>
+            <p>{{ selectedContract.contract_number }} • Database Record ID #{{ selectedContract.id }}</p>
+          </div>
+          <button type="button" class="close-btn" (click)="closeDetails()" aria-label="Close modal">✕</button>
+        </div>
+
+        <div class="modal-body">
+          <div class="detail-grid">
+            <!-- Supplier -->
+            <div class="detail-item">
+              <span class="detail-label">Associated Supplier</span>
+              <span class="detail-value highlight-supplier">{{ getVendorName(selectedContract) }}</span>
+              <small class="detail-sub">{{ getVendorCategory(selectedContract.vendor_id) }} • Vendor #{{ selectedContract.vendor_id }}</small>
+            </div>
+
+            <!-- Value -->
+            <div class="detail-item">
+              <span class="detail-label">Total Contract Valuation</span>
+              <span class="detail-value value-highlight">₹{{ selectedContract.contract_value | number:'1.2-2' }}</span>
+              <small class="detail-sub">Indian Rupee Legal Commitment</small>
+            </div>
+
+            <!-- Start Date -->
+            <div class="detail-item">
+              <span class="detail-label">Effective Start Date</span>
+              <span class="detail-value">{{ selectedContract.start_date | date:'longDate' }}</span>
+            </div>
+
+            <!-- Expiration Date -->
+            <div class="detail-item">
+              <span class="detail-label">Expiration / Renewal Date</span>
+              <span class="detail-value">{{ selectedContract.end_date | date:'longDate' }}</span>
+              <span *ngIf="isExpiringSoon(selectedContract.end_date)" class="expiring-badge">
+                ⚠️ Expiring within 30 days
               </span>
-
-              <span
-                *ngIf="isExpiringSoon(contract.end_date)"
-                class="tag-expiring"
-              >
-                Expiring
+              <span *ngIf="isExpired(selectedContract.end_date)" class="expired-badge">
+                Expired
               </span>
-            </td>
+            </div>
 
-            <td>
-              <span
-                class="status-pill"
-                [ngClass]="'status-' + (contract.status || 'active').toLowerCase()"
-              >
-                {{ contract.status || 'Active' }}
+            <!-- Status -->
+            <div class="detail-item">
+              <span class="detail-label">Agreement Legal Status</span>
+              <span class="status-pill" [ngClass]="getStatusClass(selectedContract.status, selectedContract.end_date)">
+                <span class="status-dot"></span>
+                <span>{{ selectedContract.status || 'Active' }}</span>
               </span>
-            </td>
+            </div>
 
-            <td
-              class="actions-td"
-              (click)="$event.stopPropagation()"
-            >
+            <!-- Contact Email -->
+            <div class="detail-item" *ngIf="getVendor(selectedContract.vendor_id)?.email">
+              <span class="detail-label">Supplier Contact Email</span>
+              <span class="detail-value">{{ getVendor(selectedContract.vendor_id)?.email }}</span>
+            </div>
 
+            <!-- SLA & Terms -->
+            <div class="detail-item full-width" *ngIf="selectedContract.terms_conditions || selectedContract.description">
+              <span class="detail-label">SLA Terms, Deliverables & Scope</span>
+              <div class="terms-box">
+                {{ selectedContract.terms_conditions || selectedContract.description }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Status Management Action Box -->
+          <div class="status-management-box">
+            <h3>Contract Status Management</h3>
+            <p>Update agreement lifecycle state in the procurement registry:</p>
+            <div class="status-btn-group">
               <button
                 type="button"
-                class="btn-sm"
-                (click)="viewDetails(contract.id!)"
+                class="status-action-btn btn-active"
+                [disabled]="actionLoading || selectedContract.status === 'Active'"
+                (click)="updateContractStatus(selectedContract, 'Active')"
               >
-                View
+                ✓ Mark Active
               </button>
 
               <button
                 type="button"
-                class="btn-sm delete"
-                (click)="deleteContract($event, contract.id!)"
+                class="status-action-btn btn-pending"
+                [disabled]="actionLoading || selectedContract.status === 'Pending'"
+                (click)="updateContractStatus(selectedContract, 'Pending')"
               >
-                Delete
+                ⏳ Under Review
               </button>
 
-            </td>
+              <button
+                type="button"
+                class="status-action-btn btn-terminate"
+                [disabled]="actionLoading || selectedContract.status === 'Terminated'"
+                (click)="updateContractStatus(selectedContract, 'Terminated')"
+              >
+                ✕ Terminate Agreement
+              </button>
+            </div>
+          </div>
+        </div>
 
-          </tr>
+        <div class="modal-footer">
+          <button type="button" class="btn-saas-action btn-secondary" (click)="closeDetails()">Close</button>
+          <button type="button" class="btn-saas-action btn-primary-cta" (click)="editContract(selectedContract.id!)">Edit Agreement</button>
+        </div>
 
-        </tbody>
-
-      </table>
+      </div>
     </div>
 
   </div>

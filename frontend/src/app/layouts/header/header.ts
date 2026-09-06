@@ -1,7 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-
 import { AuthService } from '../../core/services/auth.service';
 
 @Component({
@@ -12,14 +11,28 @@ import { AuthService } from '../../core/services/auth.service';
   styleUrl: './header.scss'
 })
 export class Header {
+  readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
 
-  private router = inject(Router);
-  private authService = inject(AuthService);
+  readonly currentUser$ = this.authService.currentUser$;
+  showMenu = false;
 
-  onLogout(): void {
+  toggleUserMenu(): void {
+    this.showMenu = !this.showMenu;
+  }
 
+  closeUserMenu(): void {
+    this.showMenu = false;
+  }
+
+  logout(): void {
+    this.showMenu = false;
     this.authService.logout();
-
     this.router.navigate(['/login']);
+  }
+
+  navigateTo(path: string): void {
+    this.showMenu = false;
+    this.router.navigate([path]);
   }
 }

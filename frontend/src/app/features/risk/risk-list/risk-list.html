@@ -1,91 +1,384 @@
-<div class="container">
+<div class="risk-list-page">
 
-    <div class="toolbar">
-
-        <h2>Vendor Risk List</h2>
-
-        <button
-            class="add-btn"
-            (click)="addRisk()">
-
-            + Add Risk
-
-        </button>
-
+  <header class="page-header">
+    <div class="page-title-group">
+      <span class="eyebrow">RISK MANAGEMENT / VENDOR INTELLIGENCE</span>
+      <h1>Risk Incident Registry</h1>
+      <p>Operational, financial, delivery, compliance, and security risk records logged across suppliers.</p>
     </div>
 
-    <table>
+    <div class="header-actions">
+      <button type="button" class="secondary-button" (click)="loadData()" [disabled]="loading" title="Refresh risk records">
+        <svg viewBox="0 0 24 24" class="btn-icon" aria-hidden="true">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+        </svg>
+        <span>{{ loading ? 'Refreshing...' : 'Refresh' }}</span>
+      </button>
 
+      <button type="button" class="secondary-button" (click)="navigateToDashboard()">
+        ← Risk Dashboard
+      </button>
+
+      <button type="button" class="primary-button" (click)="navigateToAdd()">
+        <svg viewBox="0 0 24 24" class="btn-icon" aria-hidden="true">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        <span>Log Vendor Risk</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Error Banner -->
+  <div *ngIf="errorMessage" class="error-banner">
+    <span>⚠️</span>
+    <span>{{ errorMessage }}</span>
+    <button type="button" class="retry-btn" (click)="loadData()">Retry</button>
+  </div>
+
+  <!-- Summary Row -->
+  <section class="summary-row" aria-label="Risk registry summary">
+    <div class="summary-card">
+      <div class="card-head">
+        <span class="summary-label">Total Logged Risks</span>
+        <div class="kpi-mini-icon blue">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+          </svg>
+        </div>
+      </div>
+      <strong class="summary-val">{{ risks.length }}</strong>
+      <small class="summary-meta">Historical & active records</small>
+    </div>
+
+    <div class="summary-card crit-card">
+      <div class="card-head">
+        <span class="summary-label">Critical & High Severity</span>
+        <div class="kpi-mini-icon red">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+        </div>
+      </div>
+      <strong class="summary-val crit-val">{{ criticalHighCount }}</strong>
+      <small class="summary-meta">High operational threat</small>
+    </div>
+
+    <div class="summary-card open-card">
+      <div class="card-head">
+        <span class="summary-label">Open Incidents</span>
+        <div class="kpi-mini-icon amber">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+        </div>
+      </div>
+      <strong class="summary-val open-val">{{ openCount }}</strong>
+      <small class="summary-meta">Awaiting review / action</small>
+    </div>
+
+    <div class="summary-card mitigated-card">
+      <div class="card-head">
+        <span class="summary-label">Mitigated & Closed</span>
+        <div class="kpi-mini-icon green">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+        </div>
+      </div>
+      <strong class="summary-val mitigated-val">{{ mitigatedClosedCount }}</strong>
+      <small class="summary-meta">Resolved risk items</small>
+    </div>
+  </section>
+
+  <!-- Risk Table Card -->
+  <section class="risk-card">
+
+    <div class="table-toolbar">
+      <div class="toolbar-title-group">
+        <h2>Registered Risk Incidents</h2>
+        <p>{{ filteredRisks.length }} record{{ filteredRisks.length === 1 ? '' : 's' }} matching filter</p>
+      </div>
+
+      <div class="toolbar-controls">
+        <div class="search-box">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="7"></circle>
+            <line x1="16.5" y1="16.5" x2="21" y2="21"></line>
+          </svg>
+
+          <input
+            type="text"
+            [(ngModel)]="searchTerm"
+            placeholder="Search risk type, vendor, description..."
+            aria-label="Search risks"
+          />
+        </div>
+
+        <select
+          class="filter-select"
+          [(ngModel)]="severityFilter"
+          aria-label="Filter by severity"
+        >
+          <option value="all">All Severities</option>
+          <option value="critical">Critical</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
+
+        <select
+          class="filter-select"
+          [(ngModel)]="statusFilter"
+          aria-label="Filter by status"
+        >
+          <option value="all">All Statuses</option>
+          <option value="open">Open</option>
+          <option value="under review">Under Review</option>
+          <option value="mitigated">Mitigated</option>
+          <option value="closed">Closed</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div *ngIf="loading" class="loading-state">
+      <div class="loading-spinner"></div>
+      <p>Loading real risk registry records from database...</p>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrapper" *ngIf="!loading && filteredRisks.length > 0">
+      <table class="enterprise-table">
         <thead>
-
-            <tr>
-
-                <th>Vendor</th>
-                <th>Category</th>
-                <th>Risk Level</th>
-                <th>Score</th>
-                <th>Status</th>
-                <th>Actions</th>
-
-            </tr>
-
+          <tr>
+            <th>ID / LOGGED</th>
+            <th>SUPPLIER / VENDOR</th>
+            <th>RISK CATEGORY</th>
+            <th>SEVERITY</th>
+            <th>IMPACT</th>
+            <th>STATUS</th>
+            <th>DESCRIPTION</th>
+            <th class="actions-column">ACTIONS</th>
+          </tr>
         </thead>
 
         <tbody>
+          <tr *ngFor="let r of filteredRisks">
+            <td>
+              <div class="id-cell">
+                <span class="id-text">#{{ r.id }}</span>
+                <span class="time-sub">{{ r.created_at ? (r.created_at | date:'shortDate') : '—' }}</span>
+              </div>
+            </td>
 
-            <tr *ngFor="let risk of risks">
+            <td>
+              <div class="vendor-cell">
+                <span class="vendor-name-text">{{ getVendorName(r) }}</span>
+                <span class="vendor-id-sub">Vendor #{{ r.vendor_id }}</span>
+              </div>
+            </td>
 
-                <td>{{risk.vendor}}</td>
+            <td>
+              <span class="type-pill">
+                {{ r.risk_type }}
+              </span>
+            </td>
 
-                <td>{{risk.category}}</td>
+            <td>
+              <span class="sev-pill" [ngClass]="getSeverityClass(r.severity)">
+                {{ r.severity }}
+              </span>
+            </td>
 
-                <td>
+            <td>
+              <span class="impact-val">{{ r.impact_score }}/100</span>
+            </td>
 
-                    <span
-                        [ngClass]="{
+            <td>
+              <span class="status-pill" [ngClass]="getStatusClass(r.status)">
+                <span class="status-dot"></span>
+                {{ r.status }}
+              </span>
+            </td>
 
-                        'high':risk.level==='High',
+            <td>
+              <span class="desc-preview" [title]="r.description || ''">
+                {{ r.description || '—' }}
+              </span>
+            </td>
 
-                        'medium':risk.level==='Medium',
+            <td class="actions-column">
+              <div class="row-actions">
+                <button
+                  type="button"
+                  class="action-button view"
+                  (click)="viewDetails(r)"
+                  title="View full risk details"
+                >
+                  View
+                </button>
 
-                        'low':risk.level==='Low'
+                <button
+                  type="button"
+                  class="action-button edit"
+                  (click)="editRisk(r.id!)"
+                  title="Edit risk record"
+                >
+                  Edit
+                </button>
 
-                    }">
-
-                        {{risk.level}}
-
-                    </span>
-
-                </td>
-
-                <td>{{risk.score}}</td>
-
-                <td>{{risk.status}}</td>
-
-                <td>
-
-                    <button
-                        class="edit-btn"
-                        (click)="editRisk(risk.id)">
-
-                        Edit
-
-                    </button>
-
-                    <button
-                        class="delete-btn"
-                        (click)="deleteRisk(risk.id)">
-
-                        Delete
-
-                    </button>
-
-                </td>
-
-            </tr>
-
+                <button
+                  type="button"
+                  class="action-button delete"
+                  (click)="deleteRisk($event, r.id!)"
+                  title="Delete risk record"
+                >
+                  Delete
+                </button>
+              </div>
+            </td>
+          </tr>
         </tbody>
+      </table>
+    </div>
 
-    </table>
+    <!-- Empty State -->
+    <div class="empty-state" *ngIf="!loading && filteredRisks.length === 0">
+      <div class="empty-icon">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"></path>
+        </svg>
+      </div>
+
+      <h3>{{ risks.length === 0 ? 'No risk incidents recorded yet' : 'No matching risk records found' }}</h3>
+
+      <p>
+        {{
+          risks.length === 0
+            ? 'Document operational delays, compliance non-adherence, quality deficiencies, or financial risks.'
+            : 'Try adjusting your search query or severity filter.'
+        }}
+      </p>
+
+      <button
+        *ngIf="risks.length === 0"
+        type="button"
+        class="primary-button empty-action"
+        (click)="navigateToAdd()"
+      >
+        Log First Risk Incident
+      </button>
+    </div>
+
+  </section>
+
+  <!-- Risk Details Modal / Drawer -->
+  <div class="modal-overlay" *ngIf="selectedRisk" (click)="closeDetails()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-header-info">
+          <div class="modal-eyebrow-row">
+            <span class="eyebrow">RISK INCIDENT RECORD</span>
+            <span class="sev-pill" [ngClass]="getSeverityClass(selectedRisk.severity)">
+              {{ selectedRisk.severity }} SEVERITY
+            </span>
+          </div>
+          <h2>{{ selectedRisk.risk_type }}</h2>
+          <p>Risk Record #{{ selectedRisk.id }} • Logged on {{ selectedRisk.created_at | date:'medium' }}</p>
+        </div>
+        <button type="button" class="close-btn" (click)="closeDetails()">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="detail-grid">
+          <div class="detail-item">
+            <span class="detail-label">Associated Supplier</span>
+            <span class="detail-value">{{ getVendorName(selectedRisk) }}</span>
+            <small class="detail-sub">Vendor ID #{{ selectedRisk.vendor_id }}</small>
+          </div>
+
+          <div class="detail-item">
+            <span class="detail-label">Incident Status</span>
+            <span class="status-pill" [ngClass]="getStatusClass(selectedRisk.status)">
+              <span class="status-dot"></span>
+              {{ selectedRisk.status }}
+            </span>
+          </div>
+
+          <div class="detail-item">
+            <span class="detail-label">Severity Level</span>
+            <span class="sev-pill" [ngClass]="getSeverityClass(selectedRisk.severity)">{{ selectedRisk.severity }}</span>
+          </div>
+
+          <div class="detail-item">
+            <span class="detail-label">Impact Assessment Score</span>
+            <span class="detail-value impact-text">{{ selectedRisk.impact_score }} / 100</span>
+          </div>
+
+          <div class="detail-item full-width">
+            <span class="detail-label">Incident Description & Context</span>
+            <div class="desc-content-box">
+              {{ selectedRisk.description || 'No description entered.' }}
+            </div>
+          </div>
+        </div>
+
+        <div class="status-management-box">
+          <h3>Incident Lifecycle Status</h3>
+          <p>Update risk status:</p>
+          <div class="status-btn-group">
+            <button
+              type="button"
+              class="status-action-btn btn-open"
+              [disabled]="actionLoading || selectedRisk.status === 'Open'"
+              (click)="updateStatus(selectedRisk, 'Open')"
+            >
+              ⚠ Open
+            </button>
+
+            <button
+              type="button"
+              class="status-action-btn btn-review"
+              [disabled]="actionLoading || selectedRisk.status === 'Under Review'"
+              (click)="updateStatus(selectedRisk, 'Under Review')"
+            >
+              ⏳ Under Review
+            </button>
+
+            <button
+              type="button"
+              class="status-action-btn btn-mitigated"
+              [disabled]="actionLoading || selectedRisk.status === 'Mitigated'"
+              (click)="updateStatus(selectedRisk, 'Mitigated')"
+            >
+              🛡 Mitigated
+            </button>
+
+            <button
+              type="button"
+              class="status-action-btn btn-closed"
+              [disabled]="actionLoading || selectedRisk.status === 'Closed'"
+              (click)="updateStatus(selectedRisk, 'Closed')"
+            >
+              ✓ Closed
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="secondary-button" (click)="closeDetails()">Close</button>
+        <button type="button" class="primary-button" (click)="editRisk(selectedRisk.id!)">Edit Incident</button>
+      </div>
+    </div>
+  </div>
 
 </div>

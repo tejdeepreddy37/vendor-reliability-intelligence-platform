@@ -20,6 +20,10 @@ def get_all_contracts(db: Session):
     return db.query(Contract).all()
 
 
+def get_contracts_by_vendor(db: Session, vendor_id: int):
+    return db.query(Contract).filter(Contract.vendor_id == vendor_id).all()
+
+
 def get_expiring_contracts(db: Session, days: int = 30):
     """Return contracts whose end_date falls within the next `days` days."""
     today = date.today()

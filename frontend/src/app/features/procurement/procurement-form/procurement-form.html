@@ -1,121 +1,266 @@
-<div class="container mt-4">
+<div class="procurement-form-page">
 
-  <h2>Create Procurement</h2>
+  <!-- BACKGROUND AMBIENT GLOWS -->
+  <div class="ambient-glow glow-top-left" aria-hidden="true"></div>
+  <div class="ambient-glow glow-top-right" aria-hidden="true"></div>
 
-  <form [formGroup]="procurementForm"
-        (ngSubmit)="onSubmit()">
+  <div class="form-container">
 
-    <div class="mb-3">
-      <label class="form-label">Request Number</label>
-      <input
-        class="form-control"
-        type="text"
-        formControlName="request_number">
+    <header class="form-header">
+      <div class="form-header-content">
+        <span class="eyebrow">PROCUREMENT / REQUISITION MANAGEMENT</span>
+        <h1>{{ isEditMode ? 'Edit Procurement Requisition' : 'Create Procurement Requisition' }}</h1>
+        <p>{{ isEditMode ? 'Update requisition scope, supplier requirements, and purchasing valuation.' : 'Draft and register a formal procurement requisition for approval and fulfillment.' }}</p>
+      </div>
+
+      <button type="button" class="btn-saas-action btn-secondary" (click)="cancel()">
+        ← Back to Procurement
+      </button>
+    </header>
+
+    <!-- Error Banner -->
+    <div *ngIf="errorMessage" class="error-banner">
+      <div class="error-content">
+        <span class="error-badge">!</span>
+        <div class="error-text">
+          <strong>Validation Notice</strong>
+          <p>{{ errorMessage }}</p>
+        </div>
+      </div>
     </div>
 
-    <div class="mb-3">
-      <label class="form-label">Title</label>
-      <input
-        class="form-control"
-        type="text"
-        formControlName="title">
+    <!-- Loading State -->
+    <div *ngIf="loading" class="form-loading">
+      <div class="loading-spinner"></div>
+      <p>Loading procurement data and supplier directory...</p>
     </div>
 
-    <div class="mb-3">
-      <label class="form-label">Description</label>
-      <textarea
-        class="form-control"
-        rows="3"
-        formControlName="description"></textarea>
-    </div>
+    <form *ngIf="!loading" [formGroup]="procurementForm" (ngSubmit)="onSubmit()" class="procurement-form-card saas-card" novalidate>
 
-    <div class="mb-3">
-      <label class="form-label">Vendor ID</label>
-      <input
-        class="form-control"
-        type="number"
-        formControlName="vendor_id">
-    </div>
+      <div class="form-section">
+        <h2 class="section-title">Requisition Identification & Supplier Assignment</h2>
+        <div class="form-grid">
 
-    <div class="mb-3">
-      <label class="form-label">Requested By</label>
-      <input
-        class="form-control"
-        type="text"
-        formControlName="requested_by">
-    </div>
+          <!-- Request Number -->
+          <div class="form-group">
+            <label for="request_number">
+              Requisition Number <span class="required">*</span>
+            </label>
+            <input
+              id="request_number"
+              type="text"
+              formControlName="request_number"
+              placeholder="e.g. PR-2026-1001"
+              [class.invalid]="procurementForm.get('request_number')?.invalid && procurementForm.get('request_number')?.touched"
+              [readonly]="isEditMode"
+            />
+            <div *ngIf="procurementForm.get('request_number')?.invalid && procurementForm.get('request_number')?.touched" class="field-error">
+              Requisition number is required.
+            </div>
+          </div>
 
-    <div class="mb-3">
-      <label class="form-label">Approved By</label>
-      <input
-        class="form-control"
-        type="text"
-        formControlName="approved_by">
-    </div>
+          <!-- Vendor Selection (Real PostgreSQL vendors) -->
+          <div class="form-group">
+            <label for="vendor_id">
+              Associated Supplier / Vendor <span class="required">*</span>
+            </label>
+            <select
+              id="vendor_id"
+              formControlName="vendor_id"
+              [class.invalid]="procurementForm.get('vendor_id')?.invalid && procurementForm.get('vendor_id')?.touched"
+            >
+              <option [ngValue]="null" disabled>Select supplier from directory</option>
+              <option *ngFor="let vendor of vendors" [ngValue]="vendor.id">
+                {{ vendor.company_name }} (ID #{{ vendor.id }}) • {{ vendor.category }}
+              </option>
+            </select>
+            <div *ngIf="procurementForm.get('vendor_id')?.invalid && procurementForm.get('vendor_id')?.touched" class="field-error">
+              Please select a supplier from the directory.
+            </div>
+          </div>
 
-    <div class="mb-3">
-      <label class="form-label">Request Date</label>
-      <input
-        class="form-control"
-        type="date"
-        formControlName="request_date">
-    </div>
+          <!-- Requisition Title -->
+          <div class="form-group full-width">
+            <label for="title">
+              Requisition Title & Subject <span class="required">*</span>
+            </label>
+            <input
+              id="title"
+              type="text"
+              formControlName="title"
+              placeholder="e.g. Workstation Hardware & Cloud Server Infrastructure Upgrade"
+              [class.invalid]="procurementForm.get('title')?.invalid && procurementForm.get('title')?.touched"
+            />
+            <div *ngIf="procurementForm.get('title')?.invalid && procurementForm.get('title')?.touched" class="field-error">
+              Requisition title is required.
+            </div>
+          </div>
 
-    <div class="mb-3">
-      <label class="form-label">Expected Delivery</label>
-      <input
-        class="form-control"
-        type="date"
-        formControlName="expected_delivery">
-    </div>
+          <!-- Description -->
+          <div class="form-group full-width">
+            <label for="description">
+              Technical Description & Requirement Details
+            </label>
+            <textarea
+              id="description"
+              rows="3"
+              formControlName="description"
+              placeholder="Enter technical specifications, batch quantities, model numbers, or operational requirements..."
+            ></textarea>
+          </div>
 
-    <div class="mb-3">
-      <label class="form-label">Total Amount</label>
-      <input
-        class="form-control"
-        type="number"
-        formControlName="total_amount">
-    </div>
+        </div>
+      </div>
 
-    <div class="mb-3">
-      <label class="form-label">Status</label>
+      <div class="form-section">
+        <h2 class="section-title">Schedule, Authorization & Valuation (INR)</h2>
+        <div class="form-grid">
 
-      <select
-        class="form-select"
-        formControlName="status">
+          <!-- Request Date -->
+          <div class="form-group">
+            <label for="request_date">
+              Date Requested <span class="required">*</span>
+            </label>
+            <input
+              id="request_date"
+              type="date"
+              formControlName="request_date"
+              [class.invalid]="procurementForm.get('request_date')?.invalid && procurementForm.get('request_date')?.touched"
+            />
+            <div *ngIf="procurementForm.get('request_date')?.invalid && procurementForm.get('request_date')?.touched" class="field-error">
+              Request date is required.
+            </div>
+          </div>
 
-        <option value="Pending">Pending</option>
-        <option value="Approved">Approved</option>
-        <option value="Rejected">Rejected</option>
+          <!-- Expected Delivery -->
+          <div class="form-group">
+            <label for="expected_delivery">
+              Expected Delivery / Due Date
+            </label>
+            <input
+              id="expected_delivery"
+              type="date"
+              formControlName="expected_delivery"
+            />
+          </div>
 
-      </select>
+          <!-- Total Amount (INR) -->
+          <div class="form-group">
+            <label for="total_amount">
+              Total Estimated Amount (₹ INR) <span class="required">*</span>
+            </label>
+            <input
+              id="total_amount"
+              type="number"
+              step="0.01"
+              min="0"
+              formControlName="total_amount"
+              placeholder="e.g. 350000.00"
+              [class.invalid]="procurementForm.get('total_amount')?.invalid && procurementForm.get('total_amount')?.touched"
+            />
+            <div *ngIf="procurementForm.get('total_amount')?.invalid && procurementForm.get('total_amount')?.touched" class="field-error">
+              Valid positive requisition amount in INR is required.
+            </div>
+          </div>
 
-    </div>
+          <!-- Status -->
+          <div class="form-group">
+            <label for="status">
+              Approval / Requisition Status <span class="required">*</span>
+            </label>
+            <select
+              id="status"
+              formControlName="status"
+            >
+              <option value="Pending">Pending Review</option>
+              <option value="Approved">Approved</option>
+              <option value="Rejected">Rejected</option>
+              <option value="Completed">Completed</option>
+              <option value="Cancelled">Cancelled</option>
+            </select>
+          </div>
 
-    <div class="mb-3">
-      <label class="form-label">Invoice Number</label>
-      <input
-        class="form-control"
-        type="text"
-        formControlName="invoice_number">
-    </div>
+          <!-- Requested By -->
+          <div class="form-group">
+            <label for="requested_by">
+              Requested By (Officer Name) <span class="required">*</span>
+            </label>
+            <input
+              id="requested_by"
+              type="text"
+              formControlName="requested_by"
+              placeholder="e.g. Rahul Sharma"
+              [class.invalid]="procurementForm.get('requested_by')?.invalid && procurementForm.get('requested_by')?.touched"
+            />
+            <div *ngIf="procurementForm.get('requested_by')?.invalid && procurementForm.get('requested_by')?.touched" class="field-error">
+              Initiating officer name is required.
+            </div>
+          </div>
 
-    <div class="mb-3">
-      <label class="form-label">Remarks</label>
-      <textarea
-        class="form-control"
-        rows="3"
-        formControlName="remarks"></textarea>
-    </div>
+          <!-- Approved By -->
+          <div class="form-group">
+            <label for="approved_by">
+              Approved By (Authorizing Authority)
+            </label>
+            <input
+              id="approved_by"
+              type="text"
+              formControlName="approved_by"
+              placeholder="e.g. VP Procurement"
+            />
+          </div>
 
-    <button
-      type="submit"
-      class="btn btn-primary">
+          <!-- Invoice Number -->
+          <div class="form-group">
+            <label for="invoice_number">
+              Invoice Reference # (Optional)
+            </label>
+            <input
+              id="invoice_number"
+              type="text"
+              formControlName="invoice_number"
+              placeholder="e.g. INV-2026-9921"
+            />
+          </div>
 
-      Save Procurement
+          <!-- Remarks -->
+          <div class="form-group">
+            <label for="remarks">
+              Procurement Remarks / Notes
+            </label>
+            <input
+              id="remarks"
+              type="text"
+              formControlName="remarks"
+              placeholder="e.g. Priority dispatch requested; vendor pre-qualified."
+            />
+          </div>
 
-    </button>
+        </div>
+      </div>
 
-  </form>
+      <div class="form-actions">
+        <button
+          type="button"
+          class="btn-saas-action btn-secondary"
+          (click)="cancel()"
+          [disabled]="submitting"
+        >
+          Cancel
+        </button>
+
+        <button
+          type="submit"
+          class="btn-saas-action btn-primary-cta"
+          [disabled]="submitting || procurementForm.invalid"
+        >
+          <span *ngIf="submitting" class="button-spinner"></span>
+          {{ submitting ? 'Saving Requisition...' : (isEditMode ? 'Save Requisition Changes' : 'Create Procurement Request') }}
+        </button>
+      </div>
+
+    </form>
+
+  </div>
 
 </div>

@@ -17,7 +17,12 @@
     </button>
   </div>
 
-  <div class="form-layout">
+  <div *ngIf="errorMessage" class="error-banner">
+    <span>⚠️</span>
+    <span>{{ errorMessage }}</span>
+  </div>
+
+  <form [formGroup]="vendorForm" (ngSubmit)="saveVendor()" class="form-layout">
 
     <section class="form-card">
 
@@ -34,20 +39,6 @@
         <div class="field-grid">
 
           <div class="field">
-            <label for="vendorName">
-              Vendor Name
-              <span>*</span>
-            </label>
-            <input
-              id="vendorName"
-              type="text"
-              [(ngModel)]="vendor.vendor_name"
-              placeholder="Enter vendor name"
-            />
-            <small>Registered supplier or trading name</small>
-          </div>
-
-          <div class="field">
             <label for="companyName">
               Company Name
               <span>*</span>
@@ -55,46 +46,84 @@
             <input
               id="companyName"
               type="text"
-              [(ngModel)]="vendor.company_name"
+              formControlName="company_name"
               placeholder="Enter legal company name"
             />
-            <small>Official company or organization name</small>
+            <small *ngIf="vendorForm.get('company_name')?.touched && vendorForm.get('company_name')?.invalid" class="field-error">
+              Company name is required
+            </small>
+            <small *ngIf="!vendorForm.get('company_name')?.touched || !vendorForm.get('company_name')?.invalid">
+              Official company or organization name
+            </small>
+          </div>
+
+          <div class="field">
+            <label for="contactPerson">
+              Contact Person
+              <span>*</span>
+            </label>
+            <input
+              id="contactPerson"
+              type="text"
+              formControlName="contact_person"
+              placeholder="Enter contact person name"
+            />
+            <small *ngIf="vendorForm.get('contact_person')?.touched && vendorForm.get('contact_person')?.invalid" class="field-error">
+              Contact person is required
+            </small>
+            <small *ngIf="!vendorForm.get('contact_person')?.touched || !vendorForm.get('contact_person')?.invalid">
+              Primary point of contact
+            </small>
           </div>
 
           <div class="field">
             <label for="email">
               Business Email
+              <span>*</span>
             </label>
             <input
               id="email"
               type="email"
-              [(ngModel)]="vendor.email"
+              formControlName="email"
               placeholder="vendor@company.com"
             />
+            <small *ngIf="vendorForm.get('email')?.touched && vendorForm.get('email')?.invalid" class="field-error">
+              Valid business email is required
+            </small>
           </div>
 
           <div class="field">
             <label for="phone">
               Phone Number
+              <span>*</span>
             </label>
             <input
               id="phone"
               type="text"
-              [(ngModel)]="vendor.phone"
+              formControlName="phone"
               placeholder="+91 XXXXX XXXXX"
             />
+            <small *ngIf="vendorForm.get('phone')?.touched && vendorForm.get('phone')?.invalid" class="field-error">
+              Phone number is required
+            </small>
           </div>
 
         </div>
 
         <div class="field full-field">
-          <label for="address">Business Address</label>
+          <label for="address">
+            Business Address
+            <span>*</span>
+          </label>
           <textarea
             id="address"
             rows="3"
-            [(ngModel)]="vendor.address"
+            formControlName="address"
             placeholder="Enter registered business address"
           ></textarea>
+          <small *ngIf="vendorForm.get('address')?.touched && vendorForm.get('address')?.invalid" class="field-error">
+            Business address is required
+          </small>
         </div>
 
       </div>
@@ -104,36 +133,50 @@
 
       <div class="card-header">
         <div>
-          <h2>Procurement Classification</h2>
-          <p>Assign the supplier to an operational category</p>
+          <h2>Procurement Classification & Operational Status</h2>
+          <p>Assign the supplier to an operational category and status</p>
         </div>
         <div class="step-badge">02</div>
       </div>
 
       <div class="form-body">
 
-        <div class="field">
-          <label for="category">
-            Vendor Category
-            <span>*</span>
-          </label>
+        <div class="field-grid">
 
-          <select
-            id="category"
-            [(ngModel)]="vendor.category"
-          >
-            <option value="">Select vendor category</option>
-            <option value="Raw Material Suppliers">Raw Material Suppliers</option>
-            <option value="Equipment Vendors">Equipment Vendors</option>
-            <option value="IT Vendors">IT Vendors</option>
-            <option value="Service Providers">Service Providers</option>
-            <option value="Logistics Partners">Logistics Partners</option>
-            <option value="Maintenance Vendors">Maintenance Vendors</option>
-          </select>
+          <div class="field">
+            <label for="category">
+              Vendor Category
+              <span>*</span>
+            </label>
 
-          <small>
-            This classification helps organize supplier performance and risk analysis.
-          </small>
+            <select
+              id="category"
+              formControlName="category"
+            >
+              <option value="">Select vendor category</option>
+              <option value="Raw Material Suppliers">Raw Material Suppliers</option>
+              <option value="Equipment Vendors">Equipment Vendors</option>
+              <option value="IT Vendors">IT Vendors</option>
+              <option value="Service Providers">Service Providers</option>
+              <option value="Logistics Partners">Logistics Partners</option>
+              <option value="Maintenance Vendors">Maintenance Vendors</option>
+            </select>
+
+            <small *ngIf="vendorForm.get('category')?.touched && vendorForm.get('category')?.invalid" class="field-error">
+              Category selection is required
+            </small>
+          </div>
+
+          <div class="field">
+            <label for="status">Operational Status</label>
+            <select id="status" formControlName="status">
+              <option value="Pending">Pending</option>
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+              <option value="Rejected">Rejected</option>
+            </select>
+          </div>
+
         </div>
 
       </div>
@@ -145,20 +188,22 @@
         type="button"
         class="secondary-button"
         (click)="router.navigate(['/vendors'])"
+        [disabled]="submitting"
       >
         Cancel
       </button>
 
       <button
-        type="button"
+        type="submit"
         class="primary-button"
-        (click)="saveVendor()"
+        [disabled]="submitting"
       >
         <span>{{ isEdit ? '✓' : '+' }}</span>
-        {{ isEdit ? 'Update Vendor' : 'Create Vendor' }}
+        {{ submitting ? 'Saving...' : (isEdit ? 'Update Vendor' : 'Create Vendor') }}
       </button>
 
     </div>
 
-  </div>
+  </form>
 </div>
+

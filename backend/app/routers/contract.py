@@ -65,6 +65,19 @@ def get_expiring_contracts(
 
 
 @router.get(
+    "/vendor/{vendor_id}",
+    response_model=list[ContractResponse],
+)
+def get_contracts_by_vendor(
+    vendor_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from app.services.contract_service import get_contracts_by_vendor_service
+    return get_contracts_by_vendor_service(db, vendor_id)
+
+
+@router.get(
     "/{contract_id}",
     response_model=ContractResponse,
 )

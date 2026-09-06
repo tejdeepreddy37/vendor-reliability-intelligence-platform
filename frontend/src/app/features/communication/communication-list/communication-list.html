@@ -1,48 +1,365 @@
-<div class="container mt-4">
+<div class="comm-page">
 
-  <h2>Communication List</h2>
+  <header class="page-header">
+    <div class="page-title-group">
+      <span class="eyebrow">PROCUREMENT / VENDOR RELATIONS</span>
+      <h1>Communications & Engagement</h1>
+      <p>Track official supplier correspondence, meeting logs, formal notices, inquiries, and status updates.</p>
+    </div>
 
-  <table class="table table-bordered table-striped">
+    <div class="header-actions">
+      <button type="button" class="secondary-button" (click)="loadData()" [disabled]="loading" title="Refresh communication logs">
+        <svg viewBox="0 0 24 24" class="btn-icon" aria-hidden="true">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+        </svg>
+        <span>{{ loading ? 'Refreshing...' : 'Refresh' }}</span>
+      </button>
 
-    <thead class="table-dark">
-      <tr>
-        <th>ID</th>
-        <th>Vendor ID</th>
-        <th>Subject</th>
-        <th>Type</th>
-        <th>Status</th>
-        <th>Date</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
+      <button type="button" class="primary-button" (click)="navigateToCreate()">
+        <svg viewBox="0 0 24 24" class="btn-icon" aria-hidden="true">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        <span>Log Communication</span>
+      </button>
+    </div>
+  </header>
 
-    <tbody>
+  <!-- Error Banner -->
+  <div *ngIf="errorMessage" class="error-banner">
+    <span>⚠️</span>
+    <span>{{ errorMessage }}</span>
+    <button type="button" class="retry-btn" (click)="loadData()">Retry</button>
+  </div>
 
-      <tr *ngFor="let communication of communications">
+  <!-- Summary Row -->
+  <section class="summary-row" aria-label="Communications summary">
+    <div class="summary-card total-card">
+      <div class="card-head">
+        <span class="summary-label">Total Interactions</span>
+        <div class="kpi-mini-icon blue">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+          </svg>
+        </div>
+      </div>
+      <strong class="summary-val">{{ communications.length }}</strong>
+      <small class="summary-meta">Logged communications</small>
+    </div>
 
-        <td>{{ communication.id }}</td>
-        <td>{{ communication.vendor_id }}</td>
-        <td>{{ communication.subject }}</td>
-        <td>{{ communication.communication_type }}</td>
-        <td>{{ communication.status }}</td>
-        <td>{{ communication.communication_date }}</td>
+    <div class="summary-card email-card">
+      <div class="card-head">
+        <span class="summary-label">Email Dispatches</span>
+        <div class="kpi-mini-icon purple">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+            <polyline points="22,6 12,13 2,6"></polyline>
+          </svg>
+        </div>
+      </div>
+      <strong class="summary-val email-val">{{ emailCount }}</strong>
+      <small class="summary-meta">Direct email messages</small>
+    </div>
 
-        <td>
+    <div class="summary-card meet-card">
+      <div class="card-head">
+        <span class="summary-label">Calls & Meetings</span>
+        <div class="kpi-mini-icon green">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+          </svg>
+        </div>
+      </div>
+      <strong class="summary-val meet-val">{{ callMeetingCount }}</strong>
+      <small class="summary-meta">Direct supplier discussions</small>
+    </div>
 
-          <button
-            class="btn btn-danger btn-sm"
-            (click)="deleteCommunication(communication.id!)">
+    <div class="summary-card notice-card">
+      <div class="card-head">
+        <span class="summary-label">Notices & Inquiries</span>
+        <div class="kpi-mini-icon amber">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+        </div>
+      </div>
+      <strong class="summary-val notice-val">{{ noticeInquiryCount }}</strong>
+      <small class="summary-meta">Formal notices and queries</small>
+    </div>
+  </section>
 
-            Delete
+  <!-- Table Card -->
+  <section class="comm-card">
 
-          </button>
+    <div class="table-toolbar">
+      <div>
+        <h2>Communication Log</h2>
+        <p>{{ filteredCommunications.length }} record{{ filteredCommunications.length === 1 ? '' : 's' }} matching filter</p>
+      </div>
 
-        </td>
+      <div class="toolbar-controls">
+        <div class="search-box">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="7"></circle>
+            <line x1="16.5" y1="16.5" x2="21" y2="21"></line>
+          </svg>
 
-      </tr>
+          <input
+            type="text"
+            [(ngModel)]="searchTerm"
+            placeholder="Search subject, message, vendor..."
+            aria-label="Search communications"
+          />
+        </div>
 
-    </tbody>
+        <select
+          class="type-filter"
+          [(ngModel)]="typeFilter"
+          aria-label="Filter by communication type"
+        >
+          <option value="all">All Channels</option>
+          <option value="email">Email</option>
+          <option value="call">Phone Call</option>
+          <option value="meeting">Meeting</option>
+          <option value="notice">Formal Notice</option>
+          <option value="inquiry">Inquiry</option>
+        </select>
 
-  </table>
+        <select
+          class="status-filter"
+          [(ngModel)]="statusFilter"
+          aria-label="Filter by status"
+        >
+          <option value="all">All Statuses</option>
+          <option value="sent">Sent / Delivered</option>
+          <option value="pending">Pending</option>
+          <option value="draft">Draft</option>
+          <option value="archived">Archived</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div *ngIf="loading" class="loading-state">
+      <div class="loading-spinner"></div>
+      <p>Loading real communication logs from database...</p>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrapper" *ngIf="!loading && filteredCommunications.length > 0">
+      <table>
+        <thead>
+          <tr>
+            <th>ID / LOGGED</th>
+            <th>SUPPLIER / VENDOR</th>
+            <th>CHANNEL / TYPE</th>
+            <th>SUBJECT & MESSAGE PREVIEW</th>
+            <th>STATUS</th>
+            <th class="actions-column">ACTIONS</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <tr *ngFor="let comm of filteredCommunications">
+            <td>
+              <div class="id-cell">
+                <span class="id-text">#{{ comm.id }}</span>
+                <span class="time-sub">{{ comm.communication_date ? (comm.communication_date | date:'shortDate') : '—' }}</span>
+              </div>
+            </td>
+
+            <td>
+              <div class="vendor-cell">
+                <span class="vendor-name-text">{{ getVendorName(comm) }}</span>
+                <span class="vendor-id-sub">Vendor #{{ comm.vendor_id }}</span>
+              </div>
+            </td>
+
+            <td>
+              <span class="type-pill" [ngClass]="getTypeClass(comm.communication_type)">
+                <span class="type-icon">{{ getTypeIcon(comm.communication_type) }}</span>
+                {{ comm.communication_type }}
+              </span>
+            </td>
+
+            <td>
+              <div class="subject-cell">
+                <span class="subject-text" [title]="comm.subject">{{ comm.subject }}</span>
+                <span class="message-preview" [title]="comm.message">{{ comm.message }}</span>
+              </div>
+            </td>
+
+            <td>
+              <span class="status-pill" [ngClass]="getStatusClass(comm.status)">
+                <span class="status-dot"></span>
+                {{ comm.status || 'Sent' }}
+              </span>
+            </td>
+
+            <td class="actions-column">
+              <div class="row-actions">
+                <button
+                  type="button"
+                  class="action-button view"
+                  (click)="viewDetails(comm)"
+                  title="View full communication details"
+                >
+                  View
+                </button>
+
+                <button
+                  type="button"
+                  class="action-button edit"
+                  (click)="editCommunication(comm.id!)"
+                  title="Edit communication log"
+                >
+                  Edit
+                </button>
+
+                <button
+                  type="button"
+                  class="action-button delete"
+                  (click)="deleteCommunication($event, comm.id!)"
+                  title="Delete communication log"
+                >
+                  Delete
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Empty State -->
+    <div class="empty-state" *ngIf="!loading && filteredCommunications.length === 0">
+      <div class="empty-icon">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+        </svg>
+      </div>
+
+      <h3>{{ communications.length === 0 ? 'No communications recorded yet' : 'No matching communications found' }}</h3>
+
+      <p>
+        {{
+          communications.length === 0
+            ? 'Log correspondence, dispatch notifications, or document meeting outcomes with your active suppliers.'
+            : 'Try adjusting your search query or channel filter.'
+        }}
+      </p>
+
+      <button
+        *ngIf="communications.length === 0"
+        type="button"
+        class="primary-button empty-action"
+        (click)="navigateToCreate()"
+      >
+        Log First Communication
+      </button>
+    </div>
+
+  </section>
+
+  <!-- Communication Details Modal / Drawer -->
+  <div class="modal-overlay" *ngIf="selectedCommunication" (click)="closeDetails()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-header-info">
+          <div class="modal-eyebrow-row">
+            <span class="eyebrow">COMMUNICATION RECORD</span>
+            <span class="type-pill" [ngClass]="getTypeClass(selectedCommunication.communication_type)">
+              <span class="type-icon">{{ getTypeIcon(selectedCommunication.communication_type) }}</span>
+              {{ selectedCommunication.communication_type }}
+            </span>
+          </div>
+          <h2>{{ selectedCommunication.subject }}</h2>
+          <p>Record ID #{{ selectedCommunication.id }} • {{ selectedCommunication.communication_date | date:'medium' }}</p>
+        </div>
+        <button type="button" class="close-btn" (click)="closeDetails()">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="detail-grid">
+          <div class="detail-item">
+            <span class="detail-label">Associated Supplier</span>
+            <span class="detail-value">{{ getVendorName(selectedCommunication) }}</span>
+            <small *ngIf="getVendor(selectedCommunication.vendor_id)?.email" class="detail-sub">
+              {{ getVendor(selectedCommunication.vendor_id)?.email }}
+            </small>
+          </div>
+
+          <div class="detail-item">
+            <span class="detail-label">Engagement Status</span>
+            <span class="status-pill" [ngClass]="getStatusClass(selectedCommunication.status)">
+              <span class="status-dot"></span>
+              {{ selectedCommunication.status || 'Sent' }}
+            </span>
+          </div>
+
+          <div class="detail-item">
+            <span class="detail-label">Communication Channel</span>
+            <span class="detail-value">{{ selectedCommunication.communication_type }}</span>
+          </div>
+
+          <div class="detail-item">
+            <span class="detail-label">Date & Time Logged</span>
+            <span class="detail-value">{{ selectedCommunication.communication_date | date:'medium' }}</span>
+          </div>
+
+          <div class="detail-item full-width">
+            <span class="detail-label">Message Content / Meeting Notes</span>
+            <div class="message-content-box">
+              {{ selectedCommunication.message }}
+            </div>
+          </div>
+        </div>
+
+        <div class="status-management-box">
+          <h3>Correspondence Status Management</h3>
+          <p>Update communication lifecycle status:</p>
+          <div class="status-btn-group">
+            <button
+              type="button"
+              class="status-action-btn btn-sent"
+              [disabled]="actionLoading || selectedCommunication.status === 'Sent'"
+              (click)="updateStatus(selectedCommunication, 'Sent')"
+            >
+              ✓ Mark as Sent
+            </button>
+
+            <button
+              type="button"
+              class="status-action-btn btn-pending"
+              [disabled]="actionLoading || selectedCommunication.status === 'Pending'"
+              (click)="updateStatus(selectedCommunication, 'Pending')"
+            >
+              ⏳ Mark In Progress
+            </button>
+
+            <button
+              type="button"
+              class="status-action-btn btn-archived"
+              [disabled]="actionLoading || selectedCommunication.status === 'Archived'"
+              (click)="updateStatus(selectedCommunication, 'Archived')"
+            >
+              📁 Archive Log
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="secondary-button" (click)="closeDetails()">Close</button>
+        <button type="button" class="primary-button" (click)="editCommunication(selectedCommunication.id!)">Edit Record</button>
+      </div>
+    </div>
+  </div>
 
 </div>

@@ -1,86 +1,277 @@
-<div class="container">
+<div class="risk-details-page">
 
-    <h2>Risk Details</h2>
-
-    <div class="card">
-
-        <div class="row">
-            <span class="label">Vendor</span>
-            <span>{{risk.vendor}}</span>
-        </div>
-
-        <div class="row">
-            <span class="label">Category</span>
-            <span>{{risk.category}}</span>
-        </div>
-
-        <div class="row">
-            <span class="label">Risk Level</span>
-
-            <span
-                [ngClass]="{
-
-                'high':risk.level==='High',
-
-                'medium':risk.level==='Medium',
-
-                'low':risk.level==='Low'
-
-            }">
-
-                {{risk.level}}
-
-            </span>
-
-        </div>
-
-        <div class="row">
-            <span class="label">Risk Score</span>
-            <span>{{risk.score}}</span>
-        </div>
-
-        <div class="row">
-            <span class="label">Identified Date</span>
-            <span>{{risk.identifiedDate}}</span>
-        </div>
-
-        <div class="row">
-            <span class="label">Status</span>
-            <span>{{risk.status}}</span>
-        </div>
-
-        <div class="description">
-
-            <h3>Description</h3>
-
-            <p>{{risk.description}}</p>
-
-        </div>
-
-        <div class="description">
-
-            <h3>Mitigation Plan</h3>
-
-            <p>{{risk.mitigationPlan}}</p>
-
-        </div>
-
+  <header class="page-header">
+    <div class="page-title-group">
+      <div class="eyebrow-row">
+        <span class="eyebrow">SUPPLIER RISK & RELIABILITY INTELLIGENCE</span>
+        <span *ngIf="reliability" class="level-pill" [ngClass]="getRiskLevelClass(reliability.risk_level)">
+          <span class="level-dot"></span>
+          {{ reliability.risk_level }} RISK PROFILE
+        </span>
+      </div>
+      <h1>{{ vendor?.company_name || 'Supplier Intelligence' }}</h1>
+      <p>
+        <span *ngIf="vendor">ID #{{ vendor.id }} • {{ vendor.category }} • {{ vendor.contact_person || vendor.email }}</span>
+        <span *ngIf="!vendor">Supplier Risk & Reliability Analytics Profile</span>
+      </p>
     </div>
 
-    <div class="timeline">
+    <div class="header-actions">
+      <button type="button" class="secondary-button" (click)="backToDashboard()">
+        ← Risk Dashboard
+      </button>
 
-        <h3>Activity Timeline</h3>
+      <button type="button" class="primary-button" (click)="logRiskForVendor()">
+        <svg viewBox="0 0 24 24" class="btn-icon" aria-hidden="true">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        <span>Log Risk Incident</span>
+      </button>
+    </div>
+  </header>
 
-        <div
-            class="timeline-item"
-            *ngFor="let item of activities">
+  <!-- Error Banner -->
+  <div *ngIf="errorMessage" class="error-banner">
+    <span>⚠️</span>
+    <span>{{ errorMessage }}</span>
+  </div>
 
-            <h4>{{item.date}}</h4>
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-state">
+    <div class="loading-spinner"></div>
+    <p>Calculating supplier reliability scores and querying risk history...</p>
+  </div>
 
-            <p>{{item.action}}</p>
+  <div *ngIf="!loading && (vendor || reliability)" class="details-content-layout">
 
+    <!-- Top Score Overview Grid -->
+    <section class="scores-section" *ngIf="reliability">
+      <div class="score-card primary-score-card">
+        <span class="score-label">Overall Reliability Score</span>
+        <div class="score-hero-row">
+          <strong class="score-hero">{{ reliability.overall_reliability_score }}%</strong>
+          <span class="score-badge" [ngClass]="getScoreColorClass(reliability.overall_reliability_score)">
+            {{ reliability.risk_level }} RISK
+          </span>
+        </div>
+        <p class="score-desc">Weighted intelligence score derived from delivery, quality, compliance, communication, and risk incidents in PostgreSQL.</p>
+      </div>
+
+      <div class="sub-scores-grid">
+        <div class="sub-score-card">
+          <div class="card-head">
+            <span class="card-label">Delivery Score</span>
+            <span class="weight-badge">30% weight</span>
+          </div>
+          <strong class="sub-val">{{ reliability.delivery_score }}%</strong>
+          <div class="score-progress-track">
+            <div class="score-progress-bar" [style.width.%]="reliability.delivery_score"></div>
+          </div>
         </div>
 
-    </div>
+        <div class="sub-score-card">
+          <div class="card-head">
+            <span class="card-label">Quality Score</span>
+            <span class="weight-badge">25% weight</span>
+          </div>
+          <strong class="sub-val">{{ reliability.quality_score }}%</strong>
+          <div class="score-progress-track">
+            <div class="score-progress-bar" [style.width.%]="reliability.quality_score"></div>
+          </div>
+        </div>
+
+        <div class="sub-score-card">
+          <div class="card-head">
+            <span class="card-label">Compliance Score</span>
+            <span class="weight-badge">20% weight</span>
+          </div>
+          <strong class="sub-val">{{ reliability.compliance_score }}%</strong>
+          <div class="score-progress-track">
+            <div class="score-progress-bar" [style.width.%]="reliability.compliance_score"></div>
+          </div>
+        </div>
+
+        <div class="sub-score-card">
+          <div class="card-head">
+            <span class="card-label">Communication Score</span>
+            <span class="weight-badge">15% weight</span>
+          </div>
+          <strong class="sub-val">{{ reliability.communication_score }}%</strong>
+          <div class="score-progress-track">
+            <div class="score-progress-bar" [style.width.%]="reliability.communication_score"></div>
+          </div>
+        </div>
+
+        <div class="sub-score-card">
+          <div class="card-head">
+            <span class="card-label">Risk Incident Sub-Score</span>
+            <span class="weight-badge">10% weight</span>
+          </div>
+          <strong class="sub-val">{{ reliability.risk_score }}%</strong>
+          <div class="score-progress-track">
+            <div class="score-progress-bar" [style.width.%]="reliability.risk_score"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Procurement Recommendations Box -->
+    <section class="rec-section" *ngIf="reliability?.recommendations && reliability!.recommendations.length > 0">
+      <div class="rec-card">
+        <div class="rec-header">
+          <span class="rec-icon">💡</span>
+          <div>
+            <h3>Procurement Risk Advisory & Recommendations</h3>
+            <p>Automated intelligence guidelines based on continuous PostgreSQL evaluation</p>
+          </div>
+        </div>
+        <ul class="rec-list">
+          <li *ngFor="let rec of reliability!.recommendations">{{ rec }}</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Vendor Profile Card -->
+    <section class="vendor-profile-card" *ngIf="vendor">
+      <div class="profile-header">
+        <h2>Supplier Profile Summary</h2>
+      </div>
+      <div class="profile-grid">
+        <div class="profile-item">
+          <span class="profile-label">Company Name</span>
+          <span class="profile-val">{{ vendor.company_name }}</span>
+        </div>
+        <div class="profile-item">
+          <span class="profile-label">Category</span>
+          <span class="profile-val">{{ vendor.category }}</span>
+        </div>
+        <div class="profile-item">
+          <span class="profile-label">Contact Person</span>
+          <span class="profile-val">{{ vendor.contact_person || '—' }}</span>
+        </div>
+        <div class="profile-item">
+          <span class="profile-label">Email Address</span>
+          <span class="profile-val">{{ vendor.email }}</span>
+        </div>
+        <div class="profile-item">
+          <span class="profile-label">Phone</span>
+          <span class="profile-val">{{ vendor.phone || '—' }}</span>
+        </div>
+        <div class="profile-item">
+          <span class="profile-label">Supplier Status</span>
+          <span class="profile-val">{{ vendor.status || 'Active' }}</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Risk History & Incident Log Section -->
+    <section class="risk-history-section">
+      <div class="section-top-bar">
+        <div>
+          <h2>Logged Risk Incidents ({{ risks.length }})</h2>
+          <p>Historical and active operational threats documented for this supplier</p>
+        </div>
+        <button type="button" class="primary-button-sm" (click)="logRiskForVendor()">+ Log New Incident</button>
+      </div>
+
+      <div class="risks-table-wrapper" *ngIf="risks.length > 0">
+        <table class="enterprise-table">
+          <thead>
+            <tr>
+              <th>ID / DATE</th>
+              <th>CATEGORY</th>
+              <th>SEVERITY</th>
+              <th>IMPACT</th>
+              <th>STATUS</th>
+              <th>DESCRIPTION</th>
+              <th class="actions-column">LIFECYCLE & ACTIONS</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let r of risks">
+              <td>
+                <div class="id-time">
+                  <strong>#{{ r.id }}</strong>
+                  <small>{{ r.created_at ? (r.created_at | date:'shortDate') : '—' }}</small>
+                </div>
+              </td>
+
+              <td>
+                <span class="type-pill">{{ r.risk_type }}</span>
+              </td>
+
+              <td>
+                <span class="sev-pill" [ngClass]="getSeverityClass(r.severity)">{{ r.severity }}</span>
+              </td>
+
+              <td>
+                <span class="impact-text">{{ r.impact_score }}/100</span>
+              </td>
+
+              <td>
+                <span class="status-pill" [ngClass]="getStatusClass(r.status)">
+                  <span class="status-dot"></span>
+                  {{ r.status }}
+                </span>
+              </td>
+
+              <td>
+                <span class="desc-text" [title]="r.description || ''">{{ r.description || '—' }}</span>
+              </td>
+
+              <td class="actions-column">
+                <div class="action-btn-row">
+                  <button
+                    type="button"
+                    class="status-btn"
+                    *ngIf="r.status !== 'Mitigated'"
+                    (click)="updateRiskStatus(r, 'Mitigated')"
+                    title="Mark as Mitigated"
+                  >
+                    Mitigate
+                  </button>
+
+                  <button
+                    type="button"
+                    class="status-btn"
+                    *ngIf="r.status !== 'Closed'"
+                    (click)="updateRiskStatus(r, 'Closed')"
+                    title="Mark as Closed"
+                  >
+                    Close
+                  </button>
+
+                  <button
+                    type="button"
+                    class="icon-btn edit"
+                    (click)="editRisk(r.id!)"
+                    title="Edit Risk Incident"
+                  >
+                    Edit
+                  </button>
+
+                  <button
+                    type="button"
+                    class="icon-btn delete"
+                    (click)="deleteRisk(r)"
+                    title="Delete Risk Incident"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="empty-risks-card" *ngIf="risks.length === 0">
+        <p>No risk incidents have been logged for this supplier yet.</p>
+        <button type="button" class="primary-button-sm" (click)="logRiskForVendor()">Log First Risk Incident</button>
+      </div>
+    </section>
+
+  </div>
 
 </div>

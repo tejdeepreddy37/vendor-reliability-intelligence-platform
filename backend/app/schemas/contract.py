@@ -30,11 +30,12 @@ class ContractResponse(BaseModel):
     contract_number: str
     start_date: date
     end_date: date
-    status: Optional[str]
-    contract_name: str
-    contract_value: float
-    currency: Optional[str]
-    description: Optional[str]
+    status: Optional[str] = "Active"
+    contract_name: Optional[str] = ""
+    contract_value: Optional[float] = 0.0
+    currency: Optional[str] = "USD"
+    description: Optional[str] = None
+    terms_conditions: Optional[str] = None
 
     class Config:
         from_attributes = True

@@ -1,60 +1,498 @@
-<div class="container mt-4">
+<div class="po-canvas">
 
-<h2>Purchase Orders</h2>
+  <!-- BACKGROUND AMBIENT GLOWS (CSS-ONLY DECORATIVE) -->
+  <div class="ambient-glow glow-top-left" aria-hidden="true"></div>
+  <div class="ambient-glow glow-top-right" aria-hidden="true"></div>
+  <div class="ambient-glow glow-bottom-center" aria-hidden="true"></div>
 
-<table class="table table-bordered table-striped">
+  <div class="po-container">
 
-<thead>
+    <!-- 1. PAGE HEADER (MATCHING DASHBOARD & VENDORS) -->
+    <header class="page-header">
+      <div class="header-greeting-block">
+        <span class="eyebrow">PROCUREMENT / ORDER MANAGEMENT</span>
+        <h1 class="page-title">Purchase Orders</h1>
+        <p class="page-subtitle">
+          Manage enterprise purchase commitments, supplier fulfillment tracking, and procurement spend.
+        </p>
+      </div>
 
-<tr>
+      <div class="header-controls">
+        <div class="live-sync-pill" title="Live PostgreSQL Data Stream">
+          <span class="pulse-dot"></span>
+          <span class="sync-caption">PostgreSQL Live: <strong>{{ purchaseOrders.length }} Orders</strong></span>
+        </div>
 
-<th>ID</th>
-<th>PO Number</th>
-<th>Procurement</th>
-<th>Vendor</th>
-<th>Total</th>
-<th>Status</th>
-<th>Payment</th>
-<th>Actions</th>
+        <button
+          type="button"
+          class="btn-saas-action btn-refresh"
+          (click)="loadData()"
+          [disabled]="loading"
+          title="Synchronize purchase order records"
+        >
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" [class.spinning]="loading">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+          </svg>
+          <span>{{ loading ? 'Updating...' : 'Refresh' }}</span>
+        </button>
 
-</tr>
+        <button
+          type="button"
+          class="btn-saas-action btn-primary-cta"
+          (click)="createPo()"
+        >
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <span>Create Purchase Order</span>
+        </button>
+      </div>
+    </header>
 
-</thead>
+    <!-- ERROR NOTIFICATION BANNER -->
+    <div *ngIf="errorMessage" class="error-banner">
+      <div class="error-content">
+        <span class="error-badge">!</span>
+        <div class="error-text">
+          <strong>Data Synchronization Notice</strong>
+          <p>{{ errorMessage }}</p>
+        </div>
+      </div>
+      <button type="button" class="btn-retry" (click)="loadData()">Retry Sync</button>
+    </div>
 
-<tbody>
+    <!-- 2. KPI METRIC STRIP (4-CARD GRID) -->
+    <section class="po-kpi-grid" aria-label="Purchase order summary metrics">
 
-<tr *ngFor="let po of purchaseOrders">
+      <!-- Total Purchase Orders -->
+      <div class="saas-card ref-kpi-card kpi-cyan">
+        <div class="kpi-accent-bar cyan"></div>
+        <div class="kpi-content-box">
+          <span class="ref-kpi-label">Total Purchase Orders</span>
+          <div class="ref-metric-val">{{ purchaseOrders.length }}</div>
+          <div class="ref-trend-wrap">
+            <span class="ref-metric-trend trend-blue">Live Orders</span>
+          </div>
+        </div>
+        <div class="ref-ring-container">
+          <svg viewBox="0 0 36 36" class="ref-ring-svg">
+            <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            <path class="ring-stroke stroke-cyan" stroke-dasharray="100, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+          </svg>
+          <span class="ring-center-text">{{ purchaseOrders.length }}</span>
+        </div>
+      </div>
 
-<td>{{po.id}}</td>
+      <!-- Total Spend / Commitment -->
+      <div class="saas-card ref-kpi-card kpi-emerald">
+        <div class="kpi-accent-bar emerald"></div>
+        <div class="kpi-content-box">
+          <span class="ref-kpi-label">Total Procurement Spend</span>
+          <div class="ref-metric-val currency-val">₹{{ totalValue | number:'1.0-0' }}</div>
+          <div class="ref-trend-wrap">
+            <span class="ref-metric-trend trend-green">Committed INR</span>
+          </div>
+        </div>
+        <div class="ref-ring-container">
+          <svg viewBox="0 0 36 36" class="ref-ring-svg">
+            <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            <path class="ring-stroke stroke-green" stroke-dasharray="100, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+          </svg>
+          <span class="ring-center-text">₹</span>
+        </div>
+      </div>
 
-<td>{{po.po_number}}</td>
+      <!-- Active / In Fulfillment -->
+      <div class="saas-card ref-kpi-card kpi-blue">
+        <div class="kpi-accent-bar blue"></div>
+        <div class="kpi-content-box">
+          <span class="ref-kpi-label">Active in Fulfillment</span>
+          <div class="ref-metric-val">{{ activeCount }}</div>
+          <div class="ref-trend-wrap">
+            <span class="ref-metric-trend trend-blue">In Transit / Placed</span>
+          </div>
+        </div>
+        <div class="ref-ring-container">
+          <svg viewBox="0 0 36 36" class="ref-ring-svg">
+            <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            <path
+              class="ring-stroke stroke-blue"
+              [attr.stroke-dasharray]="((activeCount / (purchaseOrders.length || 1)) * 100) + ', 100'"
+              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+            />
+          </svg>
+          <span class="ring-center-text">{{ activeCount }}</span>
+        </div>
+      </div>
 
-<td>{{ po.procurement_id ?? po.po_number }}</td>
+      <!-- Delivered & Closed -->
+      <div class="saas-card ref-kpi-card kpi-purple">
+        <div class="kpi-accent-bar purple"></div>
+        <div class="kpi-content-box">
+          <span class="ref-kpi-label">Delivered & Closed</span>
+          <div class="ref-metric-val">{{ deliveredCount }}</div>
+          <div class="ref-trend-wrap">
+            <span class="ref-metric-trend trend-purple">Fulfilled</span>
+          </div>
+        </div>
+        <div class="ref-ring-container">
+          <svg viewBox="0 0 36 36" class="ref-ring-svg">
+            <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            <path
+              class="ring-stroke stroke-purple"
+              [attr.stroke-dasharray]="((deliveredCount / (purchaseOrders.length || 1)) * 100) + ', 100'"
+              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+            />
+          </svg>
+          <span class="ring-center-text">{{ deliveredCount }}</span>
+        </div>
+      </div>
 
-<td>{{po.vendor_id}}</td>
+    </section>
 
-<td>{{ po.total_amount ?? po.amount }}</td>
+    <!-- 3. PURCHASE ORDER DIRECTORY WORKSPACE CARD -->
+    <section class="saas-card table-section-card">
 
-<td>{{po.status}}</td>
+      <div class="card-head-row">
+        <div class="card-title-group">
+          <h2 class="card-main-title">Purchase Order Intelligence Directory</h2>
+          <span class="card-subtitle-tag">{{ filteredPurchaseOrders.length }} order(s) matching fulfillment filters</span>
+        </div>
 
-<td>{{po.payment_status}}</td>
+        <div class="toolbar-controls">
+          <div class="search-box">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="11" cy="11" r="7"></circle>
+              <line x1="16.5" y1="16.5" x2="21" y2="21"></line>
+            </svg>
+            <input
+              type="text"
+              [(ngModel)]="searchTerm"
+              placeholder="Search PO #, supplier, requisition..."
+              aria-label="Search purchase orders"
+            />
+          </div>
 
-<td>
+          <select
+            class="status-filter-select"
+            [(ngModel)]="statusFilter"
+            aria-label="Filter purchase orders by status"
+          >
+            <option value="all">All Statuses</option>
+            <option value="ordered">Ordered</option>
+            <option value="in transit">In Transit</option>
+            <option value="delivered">Delivered</option>
+            <option value="pending">Pending</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+      </div>
 
-<button
-class="btn btn-danger btn-sm"
-(click)="delete(po.id!)">
+      <!-- Loading State -->
+      <div *ngIf="loading" class="loading-state">
+        <div class="loading-spinner"></div>
+        <p>Synchronizing real purchase orders from PostgreSQL...</p>
+      </div>
 
-Delete
+      <!-- Purchase Orders Table -->
+      <div class="table-scroll-container" *ngIf="!loading && filteredPurchaseOrders.length > 0">
+        <table class="reference-data-table">
+          <thead>
+            <tr>
+              <th>PO IDENTIFIER</th>
+              <th>SUPPLIER & CATEGORY</th>
+              <th>REQUISITION CONTEXT</th>
+              <th>ORDER & DELIVERY SCHEDULE</th>
+              <th>TOTAL VALUE (INR)</th>
+              <th>FULFILLMENT STATUS</th>
+              <th>PAYMENT STATUS</th>
+              <th class="cell-align-right">ACTIONS</th>
+            </tr>
+          </thead>
 
-</button>
+          <tbody>
+            <tr *ngFor="let po of filteredPurchaseOrders">
+              <!-- PO Identifier -->
+              <td>
+                <div class="po-identity-cell">
+                  <div class="po-monogram-circle">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                      <polyline points="14 2 14 8 20 8"></polyline>
+                      <line x1="16" y1="13" x2="8" y2="13"></line>
+                      <line x1="16" y1="17" x2="8" y2="17"></line>
+                    </svg>
+                  </div>
+                  <div class="po-text-stack">
+                    <strong class="po-number-strong">{{ po.po_number }}</strong>
+                    <span class="po-id-sub">PO ID #{{ po.id }}</span>
+                  </div>
+                </div>
+              </td>
 
-</td>
+              <!-- Supplier & Category -->
+              <td>
+                <div class="supplier-identity-cell">
+                  <div class="supplier-monogram-circle">
+                    {{ getInitials(getVendorName(po.vendor_id)) }}
+                  </div>
+                  <div class="supplier-text-stack">
+                    <strong class="supplier-name-strong">{{ getVendorName(po.vendor_id) }}</strong>
+                    <span class="supplier-category-span">
+                      {{ getVendorCategory(po.vendor_id) }} • #{{ po.vendor_id }}
+                    </span>
+                  </div>
+                </div>
+              </td>
 
-</tr>
+              <!-- Requisition Context -->
+              <td>
+                <span class="procurement-badge-pill" [title]="getProcurementLabel(po.procurement_id)">
+                  <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" class="pr-icon">
+                    <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path>
+                    <rect x="9" y="3" width="6" height="4" rx="1"></rect>
+                  </svg>
+                  <span>{{ getProcurementLabel(po.procurement_id) }}</span>
+                </span>
+              </td>
 
-</tbody>
+              <!-- Dates Schedule -->
+              <td>
+                <div class="dates-meta-cell">
+                  <div class="date-row">
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                      <line x1="16" y1="2" x2="16" y2="6"></line>
+                      <line x1="8" y1="2" x2="8" y2="6"></line>
+                      <line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
+                    <span>Placed: <strong>{{ po.order_date | date:'mediumDate' }}</strong></span>
+                  </div>
+                  <div class="date-row delivery-row" [class.no-date]="!po.expected_delivery">
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    <span>Due: {{ po.expected_delivery ? (po.expected_delivery | date:'mediumDate') : 'Not scheduled' }}</span>
+                  </div>
+                </div>
+              </td>
 
-</table>
+              <!-- Order Value (INR) -->
+              <td>
+                <div class="amount-cell-stack">
+                  <strong class="amount-val-strong">₹{{ po.total_amount | number:'1.2-2' }}</strong>
+                  <small class="amount-currency-label">INR Commitment</small>
+                </div>
+              </td>
+
+              <!-- Fulfillment Status -->
+              <td>
+                <span
+                  class="status-pill-badge"
+                  [ngClass]="getStatusClass(po.status)"
+                >
+                  <span class="status-dot"></span>
+                  {{ po.status || 'Ordered' }}
+                </span>
+              </td>
+
+              <!-- Payment Status -->
+              <td>
+                <span
+                  class="pay-pill-badge"
+                  [ngClass]="getPaymentStatusClass(po.payment_status)"
+                >
+                  {{ po.payment_status || 'Pending' }}
+                </span>
+              </td>
+
+              <!-- Actions -->
+              <td class="cell-align-right">
+                <div class="row-actions-group">
+                  <button
+                    type="button"
+                    class="btn-table-action btn-inspect"
+                    (click)="viewDetails(po)"
+                    title="Inspect purchase order dossier"
+                  >
+                    Inspect
+                  </button>
+
+                  <button
+                    type="button"
+                    class="btn-table-action btn-edit"
+                    (click)="editPo(po.id!)"
+                    title="Edit purchase order"
+                  >
+                    Edit
+                  </button>
+
+                  <button
+                    type="button"
+                    class="btn-table-action btn-delete"
+                    (click)="delete(po.id!)"
+                    title="Delete purchase order"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Empty State -->
+      <div class="empty-state-card" *ngIf="!loading && filteredPurchaseOrders.length === 0">
+        <div class="empty-icon-pod">
+          <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M6 2h12l3 4v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6l3-4Z"></path>
+            <path d="M3 6h18"></path>
+            <path d="M8 10h8"></path>
+            <path d="M8 14h8"></path>
+          </svg>
+        </div>
+
+        <strong class="empty-title">
+          {{ purchaseOrders.length === 0 ? 'No Purchase Orders Recorded Yet' : 'No Matching Purchase Orders Found' }}
+        </strong>
+
+        <p class="empty-desc">
+          {{
+            purchaseOrders.length === 0
+              ? 'Generate your first purchase order to initiate procurement with active suppliers.'
+              : 'Try adjusting your search criteria or fulfillment status filter.'
+          }}
+        </p>
+
+        <button
+          *ngIf="purchaseOrders.length === 0"
+          type="button"
+          class="btn-saas-action btn-primary-cta"
+          (click)="createPo()"
+        >
+          Create First Purchase Order
+        </button>
+      </div>
+
+    </section>
+
+  </div>
+
+  <!-- 4. PURCHASE ORDER INTELLIGENCE DOSSIER MODAL -->
+  <div class="modal-overlay" *ngIf="selectedPo" (click)="closeDetails()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-header-info">
+          <span class="eyebrow">PURCHASE ORDER INTELLIGENCE DOSSIER</span>
+          <h2>{{ selectedPo.po_number }}</h2>
+          <p>ID #{{ selectedPo.id }} • {{ getProcurementLabel(selectedPo.procurement_id) }}</p>
+        </div>
+        <button type="button" class="close-btn" (click)="closeDetails()" title="Close dossier">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="detail-grid">
+          <div class="detail-item">
+            <span class="detail-label">Associated Supplier</span>
+            <span class="detail-value">{{ getVendorName(selectedPo.vendor_id) }}</span>
+            <small *ngIf="getVendor(selectedPo.vendor_id)?.email" class="detail-sub">
+              {{ getVendor(selectedPo.vendor_id)?.email }} • {{ getVendorCategory(selectedPo.vendor_id) }}
+            </small>
+          </div>
+
+          <div class="detail-item">
+            <span class="detail-label">Procurement Requisition</span>
+            <span class="detail-value">{{ getProcurementLabel(selectedPo.procurement_id) }}</span>
+          </div>
+
+          <div class="detail-item">
+            <span class="detail-label">Order Placement Date</span>
+            <span class="detail-value">{{ selectedPo.order_date | date:'longDate' }}</span>
+          </div>
+
+          <div class="detail-item">
+            <span class="detail-label">Expected Delivery Schedule</span>
+            <span class="detail-value">{{ selectedPo.expected_delivery ? (selectedPo.expected_delivery | date:'longDate') : 'Not specified' }}</span>
+          </div>
+
+          <div class="detail-item">
+            <span class="detail-label">Total Purchase Order Value</span>
+            <span class="detail-value amount-highlight">₹{{ selectedPo.total_amount | number:'1.2-2' }}</span>
+          </div>
+
+          <div class="detail-item">
+            <span class="detail-label">Payment Status</span>
+            <span class="pay-pill-badge" [ngClass]="getPaymentStatusClass(selectedPo.payment_status)">
+              {{ selectedPo.payment_status || 'Pending' }}
+            </span>
+          </div>
+
+          <div class="detail-item">
+            <span class="detail-label">Current Fulfillment Status</span>
+            <span class="status-pill-badge" [ngClass]="getStatusClass(selectedPo.status)">
+              <span class="status-dot"></span>
+              {{ selectedPo.status || 'Ordered' }}
+            </span>
+          </div>
+
+          <div class="detail-item full-width" *ngIf="selectedPo.remarks">
+            <span class="detail-label">Order Remarks & Fulfillment Notes</span>
+            <span class="detail-value remarks-box">{{ selectedPo.remarks }}</span>
+          </div>
+        </div>
+
+        <div class="status-management-box">
+          <h3>Fulfillment Status Quick Update</h3>
+          <p>Update order progress in real-time as shipment milestones are confirmed.</p>
+          <div class="status-btn-group">
+            <button
+              type="button"
+              class="status-action-btn btn-ordered"
+              [disabled]="actionLoading || selectedPo.status === 'Ordered'"
+              (click)="updatePoStatus(selectedPo, 'Ordered')"
+            >
+              📦 Set Ordered
+            </button>
+
+            <button
+              type="button"
+              class="status-action-btn btn-transit"
+              [disabled]="actionLoading || selectedPo.status === 'In Transit'"
+              (click)="updatePoStatus(selectedPo, 'In Transit')"
+            >
+              🚚 Set In Transit
+            </button>
+
+            <button
+              type="button"
+              class="status-action-btn btn-delivered"
+              [disabled]="actionLoading || selectedPo.status === 'Delivered'"
+              (click)="updatePoStatus(selectedPo, 'Delivered')"
+            >
+              ✓ Set Delivered
+            </button>
+
+            <button
+              type="button"
+              class="status-action-btn btn-cancel"
+              [disabled]="actionLoading || selectedPo.status === 'Cancelled'"
+              (click)="updatePoStatus(selectedPo, 'Cancelled')"
+            >
+              ✕ Cancel Order
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-modal-subtle" (click)="closeDetails()">Close</button>
+        <button type="button" class="btn-modal-primary" (click)="editPo(selectedPo.id!)">Edit Purchase Order</button>
+      </div>
+    </div>
+  </div>
 
 </div>

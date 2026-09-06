@@ -1,52 +1,507 @@
-<div class="container mt-4">
+<div class="procurement-canvas">
 
-<h2>Procurement List</h2>
+  <!-- BACKGROUND AMBIENT GLOWS (CSS-ONLY DECORATIVE) -->
+  <div class="ambient-glow glow-top-left" aria-hidden="true"></div>
+  <div class="ambient-glow glow-top-right" aria-hidden="true"></div>
+  <div class="ambient-glow glow-bottom-center" aria-hidden="true"></div>
 
-<table class="table table-bordered table-striped">
+  <div class="procurement-container">
 
-<thead>
+    <!-- 1. PAGE HEADER (MATCHING DASHBOARD, VENDORS, POs & CONTRACTS) -->
+    <header class="page-header">
+      <div class="header-greeting-block">
+        <span class="eyebrow">PROCUREMENT / REQUISITION MANAGEMENT</span>
+        <h1 class="page-title">Procurement Intelligence</h1>
+        <p class="page-subtitle">
+          Manage procurement requests, supplier requirements, approvals, and purchasing commitments.
+        </p>
+      </div>
 
-<tr>
+      <div class="header-controls">
+        <div class="live-sync-pill" title="Live PostgreSQL Data Stream">
+          <span class="pulse-dot"></span>
+          <span class="sync-caption">PostgreSQL Live: <strong>{{ procurements.length }} Requests</strong></span>
+        </div>
 
-<th>ID</th>
-<th>Request No</th>
-<th>Title</th>
-<th>Vendor</th>
-<th>Amount</th>
-<th>Status</th>
-<th>Actions</th>
+        <button
+          type="button"
+          class="btn-saas-action btn-refresh"
+          (click)="loadData()"
+          [disabled]="loading"
+          title="Synchronize procurement requests"
+        >
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" [class.spinning]="loading">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+          </svg>
+          <span>{{ loading ? 'Updating...' : 'Refresh' }}</span>
+        </button>
 
-</tr>
+        <button
+          type="button"
+          class="btn-saas-action btn-primary-cta"
+          (click)="navigateToCreate()"
+        >
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <span>Create Procurement Request</span>
+        </button>
+      </div>
+    </header>
 
-</thead>
+    <!-- ERROR NOTIFICATION BANNER -->
+    <div *ngIf="errorMessage" class="error-banner">
+      <div class="error-content">
+        <span class="error-badge">!</span>
+        <div class="error-text">
+          <strong>Data Synchronization Notice</strong>
+          <p>{{ errorMessage }}</p>
+        </div>
+      </div>
+      <button type="button" class="btn-retry" (click)="loadData()">Retry Sync</button>
+    </div>
 
-<tbody>
+    <!-- 2. KPI METRIC STRIP (4-CARD GRID) -->
+    <section class="procurement-kpi-grid" aria-label="Procurement summary metrics">
 
-<tr *ngFor="let p of procurements">
+      <!-- Card 1: Total Requests -->
+      <div class="saas-card ref-kpi-card kpi-cyan">
+        <div class="kpi-accent-bar cyan"></div>
+        <div class="kpi-content-box">
+          <span class="ref-kpi-label">Total Requests</span>
+          <div class="ref-metric-val">{{ totalRequests }}</div>
+          <div class="ref-trend-wrap">
+            <span class="ref-metric-trend trend-blue">Live Requests</span>
+          </div>
+        </div>
+        <div class="ref-ring-container">
+          <svg viewBox="0 0 36 36" class="ref-ring-svg">
+            <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            <path class="ring-stroke stroke-cyan" stroke-dasharray="100, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+          </svg>
+          <span class="ring-center-text">{{ totalRequests }}</span>
+        </div>
+      </div>
 
-<td>{{p.id}}</td>
-<td>{{p.request_number}}</td>
-<td>{{p.title}}</td>
-<td>{{p.vendor_id}}</td>
-<td>{{p.total_amount}}</td>
-<td>{{p.status}}</td>
+      <!-- Card 2: Pending Approval -->
+      <div class="saas-card ref-kpi-card kpi-amber">
+        <div class="kpi-accent-bar amber"></div>
+        <div class="kpi-content-box">
+          <span class="ref-kpi-label">Pending Approval</span>
+          <div class="ref-metric-val">{{ pendingCount }}</div>
+          <div class="ref-trend-wrap">
+            <span class="ref-metric-trend trend-amber">Awaiting Approval</span>
+          </div>
+        </div>
+        <div class="ref-ring-container">
+          <svg viewBox="0 0 36 36" class="ref-ring-svg">
+            <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            <path
+              class="ring-stroke stroke-amber"
+              [attr.stroke-dasharray]="((pendingCount / (procurements.length || 1)) * 100) + ', 100'"
+              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+            />
+          </svg>
+          <span class="ring-center-text">{{ pendingCount }}</span>
+        </div>
+      </div>
 
-<td>
+      <!-- Card 3: Approved Requests -->
+      <div class="saas-card ref-kpi-card kpi-emerald">
+        <div class="kpi-accent-bar emerald"></div>
+        <div class="kpi-content-box">
+          <span class="ref-kpi-label">Approved Requests</span>
+          <div class="ref-metric-val">{{ approvedCount }}</div>
+          <div class="ref-trend-wrap">
+            <span class="ref-metric-trend trend-green">Ready for Procurement</span>
+          </div>
+        </div>
+        <div class="ref-ring-container">
+          <svg viewBox="0 0 36 36" class="ref-ring-svg">
+            <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            <path
+              class="ring-stroke stroke-green"
+              [attr.stroke-dasharray]="((approvedCount / (procurements.length || 1)) * 100) + ', 100'"
+              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+            />
+          </svg>
+          <span class="ring-center-text">{{ approvedCount }}</span>
+        </div>
+      </div>
 
-<button
-class="btn btn-danger btn-sm"
-(click)="delete(p.id!)">
+      <!-- Card 4: Total Request Value -->
+      <div class="saas-card ref-kpi-card kpi-purple">
+        <div class="kpi-accent-bar purple"></div>
+        <div class="kpi-content-box">
+          <span class="ref-kpi-label">Total Request Value</span>
+          <div class="ref-metric-val currency-val">₹{{ totalRequestValue | number:'1.0-0' }}</div>
+          <div class="ref-trend-wrap">
+            <span class="ref-metric-trend trend-purple">Committed INR</span>
+          </div>
+        </div>
+        <div class="ref-ring-container">
+          <svg viewBox="0 0 36 36" class="ref-ring-svg">
+            <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            <path class="ring-stroke stroke-purple" stroke-dasharray="100, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+          </svg>
+          <span class="ring-center-text">₹</span>
+        </div>
+      </div>
 
-Delete
+    </section>
 
-</button>
+    <!-- 3. PROCUREMENT INTELLIGENCE DIRECTORY WORKSPACE CARD -->
+    <section class="saas-card table-section-card">
 
-</td>
+      <div class="card-head-row">
+        <div class="card-title-group">
+          <h2 class="card-main-title">Procurement Intelligence Directory</h2>
+          <span class="card-subtitle-tag">{{ filteredProcurements.length }} request(s) matching procurement filters</span>
+        </div>
 
-</tr>
+        <div class="toolbar-controls">
+          <div class="search-box">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="11" cy="11" r="7"></circle>
+              <line x1="16.5" y1="16.5" x2="21" y2="21"></line>
+            </svg>
+            <input
+              type="text"
+              [(ngModel)]="searchTerm"
+              placeholder="Search procurement requests, supplier, items..."
+              aria-label="Search procurement requests"
+            />
+          </div>
 
-</tbody>
+          <select
+            class="status-filter-select"
+            [(ngModel)]="statusFilter"
+            aria-label="Filter procurement requests by status"
+          >
+            <option value="all">All Statuses</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+      </div>
 
-</table>
+      <!-- Loading State -->
+      <div *ngIf="loading" class="loading-state">
+        <div class="loading-spinner"></div>
+        <p>Synchronizing real procurement requests from PostgreSQL...</p>
+      </div>
+
+      <!-- Procurement Table -->
+      <div class="table-scroll-container" *ngIf="!loading && filteredProcurements.length > 0">
+        <table class="reference-data-table">
+          <thead>
+            <tr>
+              <th>REQUEST IDENTIFIER</th>
+              <th>REQUISITION TITLE & SCOPE</th>
+              <th>SUPPLIER / VENDOR</th>
+              <th>REQUEST & DUE DATES</th>
+              <th>ESTIMATED VALUE (INR)</th>
+              <th>APPROVAL STATUS</th>
+              <th class="cell-align-right">ACTIONS</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            <tr *ngFor="let p of filteredProcurements">
+              <!-- Request Identifier -->
+              <td>
+                <div class="procurement-identity-cell">
+                  <div class="procurement-monogram-circle">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                      <polyline points="14 2 14 8 20 8"></polyline>
+                      <line x1="16" y1="13" x2="8" y2="13"></line>
+                      <line x1="16" y1="17" x2="8" y2="17"></line>
+                    </svg>
+                  </div>
+                  <div class="procurement-text-stack">
+                    <strong class="procurement-number-strong">{{ p.request_number }}</strong>
+                    <span class="procurement-id-sub">Request ID #{{ p.id }}</span>
+                  </div>
+                </div>
+              </td>
+
+              <!-- Requisition Title & Scope -->
+              <td>
+                <div class="procurement-title-stack">
+                  <span class="procurement-title-strong" [title]="p.title">
+                    {{ p.title }}
+                  </span>
+                  <span class="procurement-desc-hint" *ngIf="p.description || p.requested_by" [title]="p.description || ('Requested by ' + p.requested_by)">
+                    {{ p.description || ('Requested by ' + p.requested_by) }}
+                  </span>
+                </div>
+              </td>
+
+              <!-- Supplier / Vendor -->
+              <td>
+                <div class="supplier-identity-cell">
+                  <div class="supplier-monogram-circle">
+                    {{ getInitials(getVendorName(p.vendor_id)) }}
+                  </div>
+                  <div class="supplier-text-stack">
+                    <strong class="supplier-name-strong">{{ getVendorName(p.vendor_id) }}</strong>
+                    <span class="supplier-category-span">
+                      {{ getVendorCategory(p.vendor_id) }} • #{{ p.vendor_id }}
+                    </span>
+                  </div>
+                </div>
+              </td>
+
+              <!-- Request & Due Dates -->
+              <td>
+                <div class="date-schedule-cell">
+                  <div class="date-row" title="Date Requested">
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                      <line x1="16" y1="2" x2="16" y2="6"></line>
+                      <line x1="8" y1="2" x2="8" y2="6"></line>
+                      <line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
+                    <span>Req: {{ p.request_date | date:'mediumDate' }}</span>
+                  </div>
+                  <div class="date-row due-row" *ngIf="p.expected_delivery" title="Expected Delivery">
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    <span class="due-text">Due: {{ p.expected_delivery | date:'mediumDate' }}</span>
+                  </div>
+                </div>
+              </td>
+
+              <!-- Total Amount (INR) -->
+              <td>
+                <div class="valuation-cell">
+                  <strong class="val-inr">₹{{ p.total_amount | number:'1.2-2' }}</strong>
+                  <span class="val-sub">INR REQUEST VALUE</span>
+                </div>
+              </td>
+
+              <!-- Approval Status -->
+              <td>
+                <span class="status-pill" [ngClass]="getStatusClass(p.status)">
+                  <span class="status-dot"></span>
+                  <span>{{ p.status || 'Pending' }}</span>
+                </span>
+              </td>
+
+              <!-- Actions -->
+              <td class="cell-align-right">
+                <div class="row-actions-group">
+                  <button
+                    type="button"
+                    class="action-btn action-view"
+                    (click)="viewDetails(p)"
+                    title="Inspect procurement dossier"
+                  >
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                      <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                    <span>Inspect</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    class="action-btn action-edit"
+                    (click)="navigateToEdit(p.id!)"
+                    title="Edit requisition"
+                  >
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg>
+                  </button>
+
+                  <button
+                    type="button"
+                    class="action-btn action-delete"
+                    (click)="delete($event, p.id!)"
+                    title="Delete procurement request"
+                  >
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="3 6 5 6 21 6"></polyline>
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Empty State -->
+      <div class="empty-state" *ngIf="!loading && filteredProcurements.length === 0">
+        <div class="empty-icon-circle">
+          <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+          </svg>
+        </div>
+
+        <h3 class="empty-title">
+          {{ procurements.length === 0 ? 'No procurement requests recorded' : 'No matching procurement requests' }}
+        </h3>
+
+        <p class="empty-desc">
+          {{
+            procurements.length === 0
+              ? 'Initialize procurement requisitions to track supplier demands, purchase authorization workflows, and spend commitments.'
+              : 'Try clearing search terms or selecting another procurement approval status.'
+          }}
+        </p>
+
+        <button
+          *ngIf="procurements.length === 0"
+          type="button"
+          class="btn-saas-action btn-primary-cta"
+          (click)="navigateToCreate()"
+        >
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <span>Create First Procurement Request</span>
+        </button>
+      </div>
+
+    </section>
+
+    <!-- 4. PROCUREMENT INTELLIGENCE DOSSIER MODAL -->
+    <div class="modal-overlay" *ngIf="selectedProcurement" (click)="closeDetails()">
+      <div class="modal-card" (click)="$event.stopPropagation()">
+        
+        <div class="modal-header">
+          <div class="modal-header-info">
+            <span class="eyebrow">PROCUREMENT DOSSIER</span>
+            <h2>{{ selectedProcurement.title }}</h2>
+            <p>{{ selectedProcurement.request_number }} • Database Record ID #{{ selectedProcurement.id }}</p>
+          </div>
+          <button type="button" class="close-btn" (click)="closeDetails()" aria-label="Close modal">✕</button>
+        </div>
+
+        <div class="modal-body">
+          <div class="detail-grid">
+            <!-- Supplier -->
+            <div class="detail-item">
+              <span class="detail-label">Associated Supplier</span>
+              <span class="detail-value highlight-supplier">{{ getVendorName(selectedProcurement.vendor_id) }}</span>
+              <small class="detail-sub">{{ getVendorCategory(selectedProcurement.vendor_id) }} • Supplier #{{ selectedProcurement.vendor_id }}</small>
+            </div>
+
+            <!-- Value -->
+            <div class="detail-item">
+              <span class="detail-label">Total Estimated Valuation</span>
+              <span class="detail-value value-highlight">₹{{ selectedProcurement.total_amount | number:'1.2-2' }}</span>
+              <small class="detail-sub">Indian Rupee Commitment</small>
+            </div>
+
+            <!-- Requested By -->
+            <div class="detail-item">
+              <span class="detail-label">Requested By</span>
+              <span class="detail-value">{{ selectedProcurement.requested_by }}</span>
+              <small class="detail-sub">Initiating Officer</small>
+            </div>
+
+            <!-- Approved By -->
+            <div class="detail-item">
+              <span class="detail-label">Approved By</span>
+              <span class="detail-value">{{ selectedProcurement.approved_by || 'Pending Executive Review' }}</span>
+              <small class="detail-sub">Authorizing Authority</small>
+            </div>
+
+            <!-- Dates -->
+            <div class="detail-item">
+              <span class="detail-label">Date Requested</span>
+              <span class="detail-value">{{ selectedProcurement.request_date | date:'longDate' }}</span>
+            </div>
+
+            <div class="detail-item">
+              <span class="detail-label">Expected Delivery Schedule</span>
+              <span class="detail-value">{{ (selectedProcurement.expected_delivery | date:'longDate') || 'Standard Timeline' }}</span>
+            </div>
+
+            <!-- Status -->
+            <div class="detail-item">
+              <span class="detail-label">Requisition Status</span>
+              <span class="status-pill" [ngClass]="getStatusClass(selectedProcurement.status)">
+                <span class="status-dot"></span>
+                <span>{{ selectedProcurement.status || 'Pending' }}</span>
+              </span>
+            </div>
+
+            <!-- Invoice Number -->
+            <div class="detail-item" *ngIf="selectedProcurement.invoice_number">
+              <span class="detail-label">Invoice Reference #</span>
+              <span class="detail-value font-mono">{{ selectedProcurement.invoice_number }}</span>
+            </div>
+
+            <!-- Description -->
+            <div class="detail-item full-width" *ngIf="selectedProcurement.description">
+              <span class="detail-label">Requisition Description & Technical Scope</span>
+              <div class="terms-box">
+                {{ selectedProcurement.description }}
+              </div>
+            </div>
+
+            <!-- Remarks -->
+            <div class="detail-item full-width" *ngIf="selectedProcurement.remarks">
+              <span class="detail-label">Procurement Review Remarks</span>
+              <div class="terms-box remarks-box">
+                {{ selectedProcurement.remarks }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Approval Workflow Box -->
+          <div class="status-management-box">
+            <h3>Requisition Approval Workflow</h3>
+            <p>Authorize or reject procurement requisition in the workflow pipeline:</p>
+            <div class="status-btn-group">
+              <button
+                type="button"
+                class="status-action-btn btn-active"
+                [disabled]="actionLoading || selectedProcurement.status === 'Approved'"
+                (click)="approve(selectedProcurement)"
+              >
+                ✓ Approve Requisition
+              </button>
+
+              <button
+                type="button"
+                class="status-action-btn btn-terminate"
+                [disabled]="actionLoading || selectedProcurement.status === 'Rejected'"
+                (click)="reject(selectedProcurement)"
+              >
+                ✕ Reject Requisition
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-saas-action btn-secondary" (click)="closeDetails()">Close</button>
+          <button type="button" class="btn-saas-action btn-secondary" (click)="navigateToFullDetails(selectedProcurement.id!)">Full Details Page</button>
+          <button type="button" class="btn-saas-action btn-primary-cta" (click)="navigateToEdit(selectedProcurement.id!)">Edit Requisition</button>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
 
 </div>

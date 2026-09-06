@@ -1,44 +1,38 @@
-export type PurchaseOrderStatus =
-  'draft' | 'pending' | 'approved' | 'shipped' | 'delivered' | 'cancelled';
-
-export type PaymentStatus =
-  'pending' | 'partial' | 'paid' | 'overdue' | 'refunded';
-
 export interface PurchaseOrder {
-  id: number;
-  procurement_id?: number;
+  id?: number;
   po_number: string;
+  procurement_id: number;
   vendor_id: number;
-  amount: number;
-  total_amount?: number;
   order_date: string;
-  expected_delivery_date?: string | null;
-  status: PurchaseOrderStatus;
-  payment_status: PaymentStatus;
-  notes?: string | null;
+  expected_delivery?: string | null;
+  total_amount: number;
+  status?: string;
+  payment_status?: string;
+  remarks?: string | null;
   created_at?: string;
   updated_at?: string;
-  vendor?: {
-    id: number;
-  procurement_id?: number;
-    company_name: string;
-    contact_person?: string;
-    email?: string;
-    phone?: string;
-  };
 }
 
 export interface CreatePurchaseOrderDto {
   po_number: string;
+  procurement_id: number;
   vendor_id: number;
-  amount: number;
-  total_amount?: number;
   order_date: string;
-  expected_delivery_date?: string | null;
-  status: PurchaseOrderStatus;
-  payment_status: PaymentStatus;
-  notes?: string | null;
+  expected_delivery?: string | null;
+  total_amount: number;
+  status?: string;
+  payment_status?: string;
+  remarks?: string | null;
 }
 
-export type UpdatePurchaseOrderDto =
-  Partial<CreatePurchaseOrderDto>;
+export interface UpdatePurchaseOrderDto {
+  po_number?: string;
+  procurement_id?: number;
+  vendor_id?: number;
+  order_date?: string;
+  expected_delivery?: string | null;
+  total_amount?: number;
+  status?: string;
+  payment_status?: string;
+  remarks?: string | null;
+}

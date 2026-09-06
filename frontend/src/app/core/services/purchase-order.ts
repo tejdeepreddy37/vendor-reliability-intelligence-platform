@@ -5,7 +5,7 @@ import {
   PurchaseOrder,
   CreatePurchaseOrderDto,
   UpdatePurchaseOrderDto
-} from '../models/purchase-order';
+} from '../models/purchase-order.model';
 
 @Injectable({
   providedIn: 'root'
@@ -13,41 +13,25 @@ import {
 export class PurchaseOrderService {
   private http = inject(HttpClient);
 
-  private readonly API_URL =
-    'http://127.0.0.1:8000/purchase-orders';
+  private readonly API_URL = 'http://127.0.0.1:8000/purchase-orders';
 
   getAllPurchaseOrders(): Observable<PurchaseOrder[]> {
     return this.http.get<PurchaseOrder[]>(this.API_URL);
   }
 
   getPurchaseOrderById(id: number): Observable<PurchaseOrder> {
-    return this.http.get<PurchaseOrder>(
-      `${this.API_URL}/${id}`
-    );
+    return this.http.get<PurchaseOrder>(`${this.API_URL}/${id}`);
   }
 
-  createPurchaseOrder(
-    data: CreatePurchaseOrderDto
-  ): Observable<PurchaseOrder> {
-    return this.http.post<PurchaseOrder>(
-      this.API_URL,
-      data
-    );
+  createPurchaseOrder(data: CreatePurchaseOrderDto | PurchaseOrder): Observable<PurchaseOrder> {
+    return this.http.post<PurchaseOrder>(this.API_URL, data);
   }
 
-  updatePurchaseOrder(
-    id: number,
-    data: UpdatePurchaseOrderDto
-  ): Observable<PurchaseOrder> {
-    return this.http.put<PurchaseOrder>(
-      `${this.API_URL}/${id}`,
-      data
-    );
+  updatePurchaseOrder(id: number, data: UpdatePurchaseOrderDto | Partial<PurchaseOrder>): Observable<PurchaseOrder> {
+    return this.http.put<PurchaseOrder>(`${this.API_URL}/${id}`, data);
   }
 
-  deletePurchaseOrder(id: number): Observable<void> {
-    return this.http.delete<void>(
-      `${this.API_URL}/${id}`
-    );
+  deletePurchaseOrder(id: number): Observable<{ message: string }> {
+    return this.http.delete<{ message: string }>(`${this.API_URL}/${id}`);
   }
 }

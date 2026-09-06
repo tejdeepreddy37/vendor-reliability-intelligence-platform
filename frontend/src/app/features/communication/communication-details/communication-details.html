@@ -1,54 +1,208 @@
-<div class="container mt-4">
+<div class="comm-details-page">
 
-  <h2>Communication Details</h2>
+  <div class="details-container">
 
-  <div *ngIf="communication; else noData">
+    <header class="details-header">
+      <div class="details-header-info">
+        <div class="eyebrow-row">
+          <span class="eyebrow">PROCUREMENT / VENDOR RELATIONS</span>
+          <span *ngIf="communication" class="type-pill" [ngClass]="getTypeClass(communication.communication_type)">
+            <span class="type-icon">{{ getTypeIcon(communication.communication_type) }}</span>
+            {{ communication.communication_type }}
+          </span>
+          <span *ngIf="communication" class="status-pill" [ngClass]="getStatusClass(communication.status)">
+            <span class="status-dot"></span>
+            {{ communication.status || 'Sent' }}
+          </span>
+        </div>
+        <h1>{{ communication ? communication.subject : 'Communication Details' }}</h1>
+        <p *ngIf="communication">Interaction Record #{{ communication.id }} • Logged on {{ communication.communication_date | date:'medium' }}</p>
+      </div>
 
-    <table class="table table-bordered">
+      <div class="header-actions">
+        <button type="button" class="secondary-button" (click)="backToList()">
+          ← Back to Communications
+        </button>
 
-      <tr>
-        <th>ID</th>
-        <td>{{ communication.id }}</td>
-      </tr>
+        <button *ngIf="communication" type="button" class="primary-button" (click)="editCommunication()">
+          Edit Record
+        </button>
+      </div>
+    </header>
 
-      <tr>
-        <th>Vendor ID</th>
-        <td>{{ communication.vendor_id }}</td>
-      </tr>
+    <!-- Error Banner -->
+    <div *ngIf="errorMessage" class="error-banner">
+      <span>⚠️</span>
+      <span>{{ errorMessage }}</span>
+      <button type="button" class="retry-btn" (click)="backToList()">Back to List</button>
+    </div>
 
-      <tr>
-        <th>Subject</th>
-        <td>{{ communication.subject }}</td>
-      </tr>
+    <!-- Loading State -->
+    <div *ngIf="loading" class="details-loading">
+      <div class="loading-spinner"></div>
+      <p>Loading communication record and supplier profile...</p>
+    </div>
 
-      <tr>
-        <th>Message</th>
-        <td>{{ communication.message }}</td>
-      </tr>
+    <div *ngIf="!loading && communication" class="details-layout">
 
-      <tr>
-        <th>Communication Type</th>
-        <td>{{ communication.communication_type }}</td>
-      </tr>
+      <!-- Left Column: Primary Content -->
+      <div class="main-column">
 
-      <tr>
-        <th>Status</th>
-        <td>{{ communication.status }}</td>
-      </tr>
+        <!-- Message Transcript & Correspondence Card -->
+        <section class="card section-card">
+          <div class="card-header">
+            <h2>Correspondence Transcript & Discussion Notes</h2>
+            <span class="comm-date-badge">{{ communication.communication_date | date:'medium' }}</span>
+          </div>
 
-      <tr>
-        <th>Communication Date</th>
-        <td>{{ communication.communication_date }}</td>
-      </tr>
+          <div class="card-body">
+            <div class="info-row-banner">
+              <div class="banner-item">
+                <span class="banner-label">Interaction Channel</span>
+                <span class="type-pill" [ngClass]="getTypeClass(communication.communication_type)">
+                  <span class="type-icon">{{ getTypeIcon(communication.communication_type) }}</span>
+                  {{ communication.communication_type }}
+                </span>
+              </div>
 
-    </table>
+              <div class="banner-item">
+                <span class="banner-label">Delivery / Engagement Status</span>
+                <span class="status-pill" [ngClass]="getStatusClass(communication.status)">
+                  <span class="status-dot"></span>
+                  {{ communication.status || 'Sent' }}
+                </span>
+              </div>
+
+              <div class="banner-item">
+                <span class="banner-label">Supplier ID Link</span>
+                <strong class="vendor-link-id">Vendor #{{ communication.vendor_id }}</strong>
+              </div>
+            </div>
+
+            <div class="message-display-box">
+              <span class="message-label">Full Transcript / Notes</span>
+              <p class="message-body">{{ communication.message }}</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Associated Supplier Card -->
+        <section class="card section-card">
+          <div class="card-header">
+            <h2>Associated Supplier Details</h2>
+            <span *ngIf="vendor?.status" class="vendor-status-pill">
+              {{ vendor?.status }}
+            </span>
+          </div>
+
+          <div class="card-body">
+            <div class="detail-grid" *ngIf="vendor; else noVendor">
+              <div class="detail-item">
+                <span class="detail-label">Legal Company Name</span>
+                <span class="detail-value highlight">{{ vendor.company_name }}</span>
+              </div>
+
+              <div class="detail-item">
+                <span class="detail-label">Contact Person</span>
+                <span class="detail-value">{{ vendor.contact_person || '—' }}</span>
+              </div>
+
+              <div class="detail-item">
+                <span class="detail-label">Business Email</span>
+                <span class="detail-value">{{ vendor.email }}</span>
+              </div>
+
+              <div class="detail-item">
+                <span class="detail-label">Phone Number</span>
+                <span class="detail-value">{{ vendor.phone || '—' }}</span>
+              </div>
+
+              <div class="detail-item">
+                <span class="detail-label">Supplier Category</span>
+                <span class="detail-value">{{ vendor.category }}</span>
+              </div>
+
+              <div class="detail-item full-width" *ngIf="vendor.address">
+                <span class="detail-label">Registered Business Address</span>
+                <span class="detail-value address-text">{{ vendor.address }}</span>
+              </div>
+            </div>
+
+            <ng-template #noVendor>
+              <div class="empty-sub">
+                <p>Vendor ID #{{ communication.vendor_id }} is linked to this communication.</p>
+              </div>
+            </ng-template>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- Right Column: Operational Controls -->
+      <div class="side-column">
+
+        <!-- Status Management -->
+        <section class="card section-card">
+          <div class="card-header">
+            <h2>Engagement Status</h2>
+          </div>
+
+          <div class="card-body">
+            <p class="section-desc">Update correspondence lifecycle status:</p>
+
+            <div class="action-buttons-stack">
+              <button
+                type="button"
+                class="status-btn btn-sent"
+                [disabled]="actionLoading || communication.status === 'Sent'"
+                (click)="updateStatus('Sent')"
+              >
+                ✓ Mark as Sent
+              </button>
+
+              <button
+                type="button"
+                class="status-btn btn-pending"
+                [disabled]="actionLoading || communication.status === 'Pending'"
+                (click)="updateStatus('Pending')"
+              >
+                ⏳ Mark In Progress
+              </button>
+
+              <button
+                type="button"
+                class="status-btn btn-archived"
+                [disabled]="actionLoading || communication.status === 'Archived'"
+                (click)="updateStatus('Archived')"
+              >
+                📁 Archive Log
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Danger Zone -->
+        <section class="card section-card danger-card">
+          <div class="card-header">
+            <h2>Record Administration</h2>
+          </div>
+
+          <div class="card-body">
+            <p class="danger-desc">Deleting this log permanently removes the communication record from PostgreSQL.</p>
+            <button
+              type="button"
+              class="danger-button"
+              (click)="deleteCommunication()"
+            >
+              Delete Communication
+            </button>
+          </div>
+        </section>
+
+      </div>
+
+    </div>
 
   </div>
-
-  <ng-template #noData>
-    <div class="alert alert-warning">
-      No communication details available.
-    </div>
-  </ng-template>
 
 </div>

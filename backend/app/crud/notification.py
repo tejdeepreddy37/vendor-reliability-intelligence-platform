@@ -45,3 +45,26 @@ def delete_notification(
 ):
     db.delete(notification)
     db.commit()
+
+
+def mark_all_notifications_read(
+    db: Session,
+):
+    updated_count = (
+        db.query(Notification)
+        .filter(Notification.status == "Unread")
+        .update({"status": "Read"})
+    )
+    db.commit()
+    return updated_count
+
+
+def get_notification_by_title(
+    db: Session,
+    title: str,
+):
+    return (
+        db.query(Notification)
+        .filter(Notification.title == title)
+        .first()
+    )

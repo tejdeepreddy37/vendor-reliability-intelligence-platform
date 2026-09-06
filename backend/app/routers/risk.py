@@ -17,6 +17,7 @@ from app.services.risk_service import (
     create_risk_service,
     get_all_risks_service,
     get_risk_by_id_service,
+    get_risks_by_vendor_service,
     update_risk_service,
     delete_risk_service,
 )
@@ -49,6 +50,18 @@ def get_all_risks(
     current_user: User = Depends(get_current_user),
 ):
     return get_all_risks_service(db)
+
+
+@router.get(
+    "/vendor/{vendor_id}",
+    response_model=List[RiskResponse],
+)
+def get_risks_by_vendor(
+    vendor_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return get_risks_by_vendor_service(db, vendor_id)
 
 
 @router.get(

@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Vendor } from '../../../core/models/vendor.model';
 import { VendorService } from '../../../core/services/vendor';
@@ -13,6 +13,7 @@ import { VendorService } from '../../../core/services/vendor';
 export class PendingVendors implements OnInit {
 
   private vendorService = inject(VendorService);
+  private cdr = inject(ChangeDetectorRef);
 
   vendors: Vendor[] = [];
   loading = false;
@@ -28,11 +29,13 @@ export class PendingVendors implements OnInit {
       next: (data) => {
         this.vendors = Array.isArray(data) ? data : [];
         this.loading = false;
+        this.cdr.markForCheck();
       },
       error: (err) => {
         console.error('Error loading pending vendors', err);
         this.loading = false;
         this.vendors = [];
+        this.cdr.markForCheck();
       }
     });
   }
@@ -68,6 +71,7 @@ export class PendingVendors implements OnInit {
       },
       error: (err) => {
         console.error('Error approving vendor', err);
+        this.cdr.markForCheck();
       }
     });
   }
@@ -83,7 +87,9 @@ export class PendingVendors implements OnInit {
       },
       error: (err) => {
         console.error('Error rejecting vendor', err);
+        this.cdr.markForCheck();
       }
     });
   }
 }
+

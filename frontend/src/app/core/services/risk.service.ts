@@ -2,7 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
-import { Risk } from '../models/risk.model';
+import { Risk, RiskCreateDto, RiskUpdateDto } from '../models/risk.model';
 
 @Injectable({
   providedIn: 'root'
@@ -21,16 +21,19 @@ export class RiskService {
     return this.http.get<Risk>(`${this.apiUrl}/${id}`);
   }
 
-  createRisk(risk: Risk): Observable<Risk> {
+  getRisksByVendor(vendorId: number): Observable<Risk[]> {
+    return this.http.get<Risk[]>(`${this.apiUrl}/vendor/${vendorId}`);
+  }
+
+  createRisk(risk: RiskCreateDto | Risk): Observable<Risk> {
     return this.http.post<Risk>(this.apiUrl, risk);
   }
 
-  updateRisk(id: number, risk: Partial<Risk>): Observable<Risk> {
+  updateRisk(id: number, risk: RiskUpdateDto | Partial<Risk>): Observable<Risk> {
     return this.http.put<Risk>(`${this.apiUrl}/${id}`, risk);
   }
 
   deleteRisk(id: number): Observable<any> {
     return this.http.delete(`${this.apiUrl}/${id}`);
   }
-
 }

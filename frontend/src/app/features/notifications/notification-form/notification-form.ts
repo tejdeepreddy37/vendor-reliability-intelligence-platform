@@ -1,67 +1,93 @@
-import { Component, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
 
-import { Notification } from '../../../core/models/notification.model';
 import { NotificationService } from '../../../core/services/notification.service';
+import { VendorService } from '../../../core/services/vendor';
+import { Vendor } from '../../../core/models/vendor.model';
 
 @Component({
   selector: 'app-notification-form',
   standalone: true,
   imports: [
     CommonModule,
-    FormsModule,
-    RouterLink
+    ReactiveFormsModule
   ],
   templateUrl: './notification-form.html',
   styleUrl: './notification-form.scss'
 })
-export class NotificationForm {
-
+export class NotificationForm implements OnInit {
+  private fb = inject(FormBuilder);
   private notificationService = inject(NotificationService);
+  private vendorService = inject(VendorService);
   private router = inject(Router);
+  private cdr = inject(ChangeDetectorRef);
 
-  isSaving = false;
+  notifForm!: FormGroup;
+  vendors: Vendor[] = [];
 
-  notification: Notification = {
+  loadingVendors = false;
+  submitting = false;
+  errorMessage = '';
 
-    title: '',
-
-    message: '',
-
-    recipient: '',
-
-    notification_type: '',
-
-    status: 'Unread'
-
-  };
-
-  saveNotification(): void {
-
-    this.isSaving = true;
-
-    this.notificationService.createNotification(this.notification).subscribe({
-
-      next: () => {
-
-        alert('Notification Created Successfully');
-
-        this.router.navigate(['/notifications']);
-
-      },
-
-      error: err => {
-
-        console.error(err);
-
-        this.isSaving = false;
-
-      }
-
-    });
-
+  ngOnInit(): void {
+    this.initForm();
+    this.loadVendors();
   }
 
+  private initForm(): void {
+    this.notifForm = this.fb.group({
+      title: ['', [Validators.required, Validators.maxLength(255)]],
+      message: ['', [Validators.required, Validators.maxLength(2000)]],
+      recipient: ['procurement@vrip.enterprise', [Validators.required, Validators.email]],
+      notification_type: ['Procurement', [Validators.required]],
+      status: ['Unread']
+    });
+  }
+
+  private loadVendors(): void {
+    this.loadingVendors = true;
+    this.vendorService.getAllVendors().subscribe({
+      next: (data) => {
+        this.vendors = Array.isArray(data) ? data : [];
+        this.loadingVendors = false;
+        this.cdr.markForCheck();
+      },
+      error: (err) => {
+        console.warn('Could not load vendors for autofill:', err);
+        this.loadingVendors = false;
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  onSubmit(): void {
+    if (this.notifForm.invalid) {
+      this.notifForm.markAllAsTouched();
+      return;
+    }
+
+    this.submitting = true;
+    this.errorMessage = '';
+
+    const payload = this.notifForm.value;
+
+    this.notificationService.createNotification(payload).subscribe({
+      next: () => {
+        this.submitting = false;
+        this.router.navigate(['/notifications']);
+      },
+      error: (err) => {
+        console.error('Failed to create notification:', err);
+        this.errorMessage = err?.error?.detail || 'Failed to dispatch alert notification.';
+        this.submitting = false;
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  cancel(): void {
+    this.router.navigate(['/notifications']);
+  }
 }

@@ -30,7 +30,7 @@ export class ProcurementService {
 
   updateProcurement(
     id: number,
-    procurement: Procurement
+    procurement: Partial<Procurement>
   ): Observable<Procurement> {
     return this.http.put<Procurement>(
       `${this.API_URL}/${id}`,
@@ -40,6 +40,20 @@ export class ProcurementService {
 
   deleteProcurement(id: number): Observable<any> {
     return this.http.delete(`${this.API_URL}/${id}`);
+  }
+
+  approveProcurement(id: number, approvedBy: string): Observable<Procurement> {
+    return this.http.put<Procurement>(
+      `${this.API_URL}/${id}/approve?approved_by=${encodeURIComponent(approvedBy)}`,
+      {}
+    );
+  }
+
+  rejectProcurement(id: number, rejectedBy: string): Observable<Procurement> {
+    return this.http.put<Procurement>(
+      `${this.API_URL}/${id}/reject?rejected_by=${encodeURIComponent(rejectedBy)}`,
+      {}
+    );
   }
 
 }

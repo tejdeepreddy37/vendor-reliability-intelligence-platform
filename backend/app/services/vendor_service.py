@@ -23,6 +23,7 @@ def create_vendor_service(db: Session, vendor: VendorCreate):
         )
 
     new_vendor = Vendor(
+        vendor_name=vendor.contact_person or vendor.company_name,
         company_name=vendor.company_name,
         contact_person=vendor.contact_person,
         email=vendor.email,

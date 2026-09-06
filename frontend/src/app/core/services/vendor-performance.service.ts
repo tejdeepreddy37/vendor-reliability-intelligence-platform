@@ -2,7 +2,11 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
-import { VendorPerformance } from '../models/vendor-performance.model';
+import {
+  VendorPerformance,
+  VendorPerformanceCreateDto,
+  VendorPerformanceUpdateDto
+} from '../models/vendor-performance.model';
 
 @Injectable({
   providedIn: 'root'
@@ -15,58 +19,48 @@ export class VendorPerformanceService {
 
   // Get All Vendor Performance
   getAllVendorPerformance(): Observable<VendorPerformance[]> {
-
     return this.http.get<VendorPerformance[]>(
       this.API_URL
     );
-
   }
 
   // Get Performance By ID
   getVendorPerformanceById(
     performanceId: number
   ): Observable<VendorPerformance> {
-
     return this.http.get<VendorPerformance>(
       `${this.API_URL}/${performanceId}`
     );
-
   }
 
   // Get Performance By Vendor ID
   getVendorPerformanceByVendorId(
     vendorId: number
   ): Observable<VendorPerformance> {
-
     return this.http.get<VendorPerformance>(
       `${this.API_URL}/vendor/${vendorId}`
     );
-
   }
 
   // Create Performance
   createVendorPerformance(
-    performance: VendorPerformance
+    performance: VendorPerformanceCreateDto | VendorPerformance
   ): Observable<VendorPerformance> {
-
     return this.http.post<VendorPerformance>(
       this.API_URL,
       performance
     );
-
   }
 
   // Update Performance
   updateVendorPerformance(
     performanceId: number,
-    performance: VendorPerformance
+    performance: VendorPerformanceUpdateDto | Partial<VendorPerformance>
   ): Observable<VendorPerformance> {
-
     return this.http.put<VendorPerformance>(
       `${this.API_URL}/${performanceId}`,
       performance
     );
-
   }
 
   // Delete Performance

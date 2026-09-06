@@ -5,5 +5,6 @@ export interface Notification {
   recipient: string;
   notification_type: string;
   status?: string;
+  is_read?: boolean;
   created_at?: string;
 }

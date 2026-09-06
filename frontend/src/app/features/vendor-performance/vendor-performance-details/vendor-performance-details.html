@@ -1,0 +1,291 @@
+<div class="performance-details-page">
+
+  <header class="page-header">
+    <div class="page-title-group">
+      <div class="eyebrow-row">
+        <span class="eyebrow">SUPPLIER PERFORMANCE & OPERATIONAL ANALYTICS</span>
+        <span *ngIf="performance" class="tier-pill" [ngClass]="getScoreColorClass(performance.performance_score)">
+          {{ getPerformanceTier(performance.performance_score) }}
+        </span>
+      </div>
+      <h1>{{ vendor?.company_name || 'Supplier Performance Intelligence' }}</h1>
+      <p>
+        <span *ngIf="vendor">Supplier ID #{{ vendor.id }} • {{ vendor.category }} • Contact: {{ vendor.contact_person || vendor.email }}</span>
+        <span *ngIf="!vendor">Supplier Performance & SLA Adherence Overview</span>
+      </p>
+    </div>
+
+    <div class="header-actions">
+      <button type="button" class="secondary-button" (click)="backToPortfolio()">
+        ← Performance Portfolio
+      </button>
+
+      <button type="button" class="primary-button" (click)="editPerformance()">
+        <svg viewBox="0 0 24 24" class="btn-icon" aria-hidden="true">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+        </svg>
+        {{ performance ? 'Edit Performance Metrics' : 'Log Performance Metrics' }}
+      </button>
+    </div>
+  </header>
+
+  <!-- Error Banner -->
+  <div *ngIf="errorMessage" class="error-banner">
+    <span>⚠️</span>
+    <span>{{ errorMessage }}</span>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-state">
+    <div class="loading-spinner"></div>
+    <p>Calculating supplier performance metrics and querying database records...</p>
+  </div>
+
+  <div *ngIf="!loading && (vendor || performance)" class="details-layout">
+
+    <!-- Top Score Overview Grid -->
+    <section class="scorecards-row">
+
+      <!-- Overall Performance Score Card -->
+      <div class="scorecard hero-scorecard">
+        <span class="card-label">Operational Performance Score</span>
+        <div class="hero-val-row">
+          <strong class="hero-val" *ngIf="performance">{{ performance.performance_score }}%</strong>
+          <strong class="hero-val pending-text" *ngIf="!performance">Pending</strong>
+          <span *ngIf="performance" class="score-badge" [ngClass]="getScoreColorClass(performance.performance_score)">
+            {{ performance.performance_score >= 80 ? 'EXCELLENT' : (performance.performance_score >= 60 ? 'SATISFACTORY' : 'NEEDS ATTENTION') }}
+          </span>
+        </div>
+        <p class="card-subtext">
+          Weighted evaluation based on delivery accuracy (25%), quality rating (20%), order completion (20%), service rating (15%), response time (10%), and issue resolution (10%).
+        </p>
+      </div>
+
+      <!-- Reliability Score Card (Backend Source of Truth) -->
+      <div class="scorecard reliability-scorecard" *ngIf="reliability">
+        <span class="card-label">Reliability Intelligence Rating</span>
+        <div class="hero-val-row">
+          <strong class="hero-val blue-text">{{ reliability.overall_reliability_score }}%</strong>
+          <span class="level-pill" [ngClass]="getRiskLevelClass(reliability.risk_level)">
+            <span class="level-dot"></span>
+            {{ reliability.risk_level }} RISK
+          </span>
+        </div>
+        <p class="card-subtext">
+          Continuous risk & reliability score calculated by backend intelligence engine.
+        </p>
+      </div>
+
+    </section>
+
+    <!-- Operational KPI Metrics Grid -->
+    <section class="kpi-metrics-grid" *ngIf="performance">
+
+      <!-- On-Time Fulfillment -->
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span class="kpi-title">Fulfillment & Delivery</span>
+          <span class="kpi-tag">25% Weight</span>
+        </div>
+        <div class="kpi-metric-row">
+          <strong class="kpi-big-num">{{ onTimeDeliveryRate }}%</strong>
+          <span class="kpi-badge-sm">On-Time</span>
+        </div>
+        <div class="kpi-detail-list">
+          <div class="detail-row">
+            <span>On-Time Deliveries:</span>
+            <strong>{{ performance.on_time_deliveries }}</strong>
+          </div>
+          <div class="detail-row">
+            <span>Delayed Deliveries:</span>
+            <strong [class.text-danger]="performance.delayed_deliveries > 0">{{ performance.delayed_deliveries }}</strong>
+          </div>
+          <div class="detail-row">
+            <span>Total Fulfilled Orders:</span>
+            <strong>{{ totalDeliveries }}</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quality Rating -->
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span class="kpi-title">Quality & Service</span>
+          <span class="kpi-tag">35% Weight</span>
+        </div>
+        <div class="kpi-metric-row">
+          <strong class="kpi-big-num">{{ performance.quality_rating }} <small class="unit-text">/ 5.0</small></strong>
+          <span class="kpi-badge-sm">Quality Score</span>
+        </div>
+        <div class="kpi-detail-list">
+          <div class="detail-row">
+            <span>Service Rating:</span>
+            <strong>{{ performance.service_rating }} / 5.0</strong>
+          </div>
+          <div class="detail-row">
+            <span>Quality Percentage:</span>
+            <strong>{{ (performance.quality_rating / 5 * 100) | number:'1.0-1' }}%</strong>
+          </div>
+          <div class="detail-row">
+            <span>Service Percentage:</span>
+            <strong>{{ (performance.service_rating / 5 * 100) | number:'1.0-1' }}%</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- Order Completion -->
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span class="kpi-title">Order Completion Rate</span>
+          <span class="kpi-tag">20% Weight</span>
+        </div>
+        <div class="kpi-metric-row">
+          <strong class="kpi-big-num">{{ performance.order_completion_rate }}%</strong>
+          <span class="kpi-badge-sm">Fulfillment SLA</span>
+        </div>
+        <div class="kpi-detail-list">
+          <div class="detail-row">
+            <span>Completion Adherence:</span>
+            <strong>{{ performance.order_completion_rate >= 90 ? 'Compliant' : 'Non-Compliant' }}</strong>
+          </div>
+          <div class="detail-row">
+            <span>PO Contract Status:</span>
+            <strong>{{ contracts.length }} Active Contract{{ contracts.length === 1 ? '' : 's' }}</strong>
+          </div>
+          <div class="detail-row">
+            <span>Total Orders:</span>
+            <strong>{{ purchaseOrders.length }} Recorded POs</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- Communication & Resolution Time -->
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span class="kpi-title">Responsiveness & SLA</span>
+          <span class="kpi-tag">20% Weight</span>
+        </div>
+        <div class="kpi-metric-row">
+          <strong class="kpi-big-num">{{ performance.response_time }} <small class="unit-text">hrs</small></strong>
+          <span class="kpi-badge-sm">Response Time</span>
+        </div>
+        <div class="kpi-detail-list">
+          <div class="detail-row">
+            <span>Issue Resolution Time:</span>
+            <strong>{{ performance.issue_resolution_time }} hrs</strong>
+          </div>
+          <div class="detail-row">
+            <span>Target Response SLA:</span>
+            <strong>&le; 4.0 hrs</strong>
+          </div>
+          <div class="detail-row">
+            <span>Target Resolution SLA:</span>
+            <strong>&le; 24.0 hrs</strong>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Empty Performance Alert -->
+    <div class="empty-perf-banner" *ngIf="!performance">
+      <div class="banner-icon">ℹ️</div>
+      <div class="banner-text">
+        <h3>Performance Metrics Not Yet Initialized</h3>
+        <p>This supplier currently has no operational metrics logged in PostgreSQL. Log initial delivery, quality, and resolution data to start continuous performance scoring.</p>
+      </div>
+      <button type="button" class="primary-button" (click)="editPerformance()">Log Initial Performance</button>
+    </div>
+
+    <!-- Recommendations Box -->
+    <section class="rec-section" *ngIf="reliability?.recommendations && reliability!.recommendations.length > 0">
+      <div class="rec-card">
+        <div class="rec-header">
+          <span class="rec-icon">💡</span>
+          <div>
+            <h3>Procurement Recommendations & Performance Action Items</h3>
+            <p>Automated guidance generated by the backend intelligence engine</p>
+          </div>
+        </div>
+        <ul class="rec-list">
+          <li *ngFor="let rec of reliability!.recommendations">{{ rec }}</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Supplier & Operational Context Grid -->
+    <section class="context-grid">
+
+      <!-- Supplier Profile Card -->
+      <div class="context-card" *ngIf="vendor">
+        <div class="context-card-header">
+          <h3>Supplier Identity Profile</h3>
+          <button type="button" class="btn-link" (click)="navigateToVendor()">View in Vendors →</button>
+        </div>
+        <div class="profile-meta-list">
+          <div class="meta-item">
+            <span class="meta-label">Company Name:</span>
+            <span class="meta-val">{{ vendor.company_name }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Category:</span>
+            <span class="meta-val">{{ vendor.category }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Email:</span>
+            <span class="meta-val">{{ vendor.email }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Phone:</span>
+            <span class="meta-val">{{ vendor.phone || '—' }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Address:</span>
+            <span class="meta-val">{{ vendor.address || '—' }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Status:</span>
+            <span class="meta-val status-text">{{ vendor.status || 'Active' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Related Procurement Portfolio Activity -->
+      <div class="context-card">
+        <div class="context-card-header">
+          <h3>Operational Data Linkages</h3>
+        </div>
+
+        <div class="linkage-items-list">
+          <div class="linkage-row" (click)="navigateToPOs()">
+            <div class="linkage-info">
+              <strong>Purchase Orders</strong>
+              <small>{{ purchaseOrders.length }} order{{ purchaseOrders.length === 1 ? '' : 's' }} on record</small>
+            </div>
+            <span class="linkage-count">{{ purchaseOrders.length }}</span>
+          </div>
+
+          <div class="linkage-row" (click)="navigateToContracts()">
+            <div class="linkage-info">
+              <strong>Contracts & Compliance</strong>
+              <small>{{ contracts.length }} legal agreement{{ contracts.length === 1 ? '' : 's' }}</small>
+            </div>
+            <span class="linkage-count">{{ contracts.length }}</span>
+          </div>
+
+          <div class="linkage-row" (click)="navigateToRisks()">
+            <div class="linkage-info">
+              <strong>Logged Risk Incidents</strong>
+              <small>{{ risks.length }} risk item{{ risks.length === 1 ? '' : 's' }} registered</small>
+            </div>
+            <span class="linkage-count" [class.text-danger]="risks.length > 0">{{ risks.length }}</span>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+</div>

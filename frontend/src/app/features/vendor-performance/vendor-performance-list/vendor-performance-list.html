@@ -1,136 +1,404 @@
-<mat-toolbar color="primary">
-  <span>Vendor Performance</span>
+<div class="performance-page">
 
-  <span class="spacer"></span>
+  <!-- Header -->
+  <header class="page-header">
+    <div class="page-title-group">
+      <span class="eyebrow">PROCUREMENT INTELLIGENCE / SUPPLIER METRICS</span>
+      <h1>Supplier Performance Analytics</h1>
+      <p>Continuous SLA tracking, fulfillment accuracy, quality inspection ratings, and responsiveness monitoring.</p>
+    </div>
 
-  <button mat-raised-button color="accent" (click)="addPerformance()">
-    <mat-icon>add</mat-icon>
-    Add Performance
-  </button>
-</mat-toolbar>
+    <div class="header-actions">
+      <button type="button" class="secondary-button" (click)="loadData()" [disabled]="loading" title="Refresh records">
+        <svg viewBox="0 0 24 24" class="btn-icon" aria-hidden="true">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+        </svg>
+        <span>{{ loading ? 'Refreshing...' : 'Refresh' }}</span>
+      </button>
 
-<div class="page">
+      <button type="button" class="primary-button" (click)="navigateToAdd()">
+        <svg viewBox="0 0 24 24" class="btn-icon" aria-hidden="true">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        <span>Log Performance Metrics</span>
+      </button>
+    </div>
+  </header>
 
-  <mat-form-field appearance="outline" class="search-field">
-    <mat-label>Search</mat-label>
+  <!-- Error Banner -->
+  <div *ngIf="errorMessage" class="error-banner">
+    <span>⚠️</span>
+    <span>{{ errorMessage }}</span>
+    <button type="button" class="retry-btn" (click)="loadData()">Retry</button>
+  </div>
 
-    <input
-      matInput
-      placeholder="Search vendor performance..."
-      (keyup)="applyFilter($event)"
-    />
+  <!-- Summary KPI Row -->
+  <section class="summary-row" aria-label="Performance summary metrics">
+    <div class="summary-card avg-card">
+      <div class="card-head">
+        <span class="summary-label">Avg Portfolio Score</span>
+        <div class="kpi-mini-icon blue">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+        </div>
+      </div>
+      <strong class="summary-val avg-val">{{ averagePerformanceScore }}%</strong>
+      <small class="summary-meta">Weighted operational rating</small>
+    </div>
 
-    <mat-icon matSuffix>search</mat-icon>
+    <div class="summary-card top-card">
+      <div class="card-head">
+        <span class="summary-label">Top Performers (&ge;80%)</span>
+        <div class="kpi-mini-icon green">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+          </svg>
+        </div>
+      </div>
+      <strong class="summary-val top-val">{{ topPerformersCount }}</strong>
+      <small class="summary-meta">Tier 1 & 2 preferred suppliers</small>
+    </div>
 
-  </mat-form-field>
+    <div class="summary-card sat-card">
+      <div class="card-head">
+        <span class="summary-label">Satisfactory (60-79%)</span>
+        <div class="kpi-mini-icon amber">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+        </div>
+      </div>
+      <strong class="summary-val sat-val">{{ satisfactoryCount }}</strong>
+      <small class="summary-meta">Standard SLA adherence</small>
+    </div>
 
-  <table
-    mat-table
-    [dataSource]="dataSource"
-    matSort
-    class="mat-elevation-z8 full-width">
+    <div class="summary-card att-card">
+      <div class="card-head">
+        <span class="summary-label">Action Required (&lt;60%)</span>
+        <div class="kpi-mini-icon red">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+        </div>
+      </div>
+      <strong class="summary-val att-val">{{ attentionRequiredCount }}</strong>
+      <small class="summary-meta">Underperforming vendors</small>
+    </div>
 
-    <!-- ID -->
-    <ng-container matColumnDef="id">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>ID</th>
-      <td mat-cell *matCellDef="let item">
-        {{ item.id }}
-      </td>
-    </ng-container>
+    <div class="summary-card fulfillment-card">
+      <div class="card-head">
+        <span class="summary-label">Portfolio Fulfillment</span>
+        <div class="kpi-mini-icon purple">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M6 2h12l3 4v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6l3-4Z"></path>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+          </svg>
+        </div>
+      </div>
+      <strong class="summary-val fulfill-val">{{ onTimeDeliveryRate }}%</strong>
+      <small class="summary-meta">On-time delivery accuracy</small>
+    </div>
+  </section>
 
-    <!-- Vendor -->
-    <ng-container matColumnDef="vendor">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>Vendor</th>
-      <td mat-cell *matCellDef="let item">
-        {{ item.vendor_id }}
-      </td>
-    </ng-container>
+  <!-- Main Performance Table Card -->
+  <section class="performance-card">
 
-    <!-- Score -->
-    <ng-container matColumnDef="score">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>Score</th>
-      <td mat-cell *matCellDef="let item">
-        {{ item.performance_score }}
-      </td>
-    </ng-container>
+    <div class="table-toolbar">
+      <div class="toolbar-title-group">
+        <h2>Supplier Performance Portfolio</h2>
+        <p>{{ filteredItems.length }} supplier{{ filteredItems.length === 1 ? '' : 's' }} in evaluation</p>
+      </div>
 
-    <!-- Quality -->
-    <ng-container matColumnDef="quality">
-      <th mat-header-cell *matHeaderCellDef>Quality</th>
-      <td mat-cell *matCellDef="let item">
-        {{ item.quality_rating }}
-      </td>
-    </ng-container>
+      <div class="toolbar-controls">
+        <div class="search-box">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="7"></circle>
+            <line x1="16.5" y1="16.5" x2="21" y2="21"></line>
+          </svg>
+          <input
+            type="text"
+            [(ngModel)]="searchTerm"
+            placeholder="Search supplier, category, tier..."
+            aria-label="Search suppliers"
+          />
+        </div>
 
-    <!-- Response -->
-    <ng-container matColumnDef="response">
-      <th mat-header-cell *matHeaderCellDef>Response</th>
-      <td mat-cell *matCellDef="let item">
-        {{ item.response_time }}
-      </td>
-    </ng-container>
+        <select
+          class="tier-filter"
+          [(ngModel)]="tierFilter"
+          aria-label="Filter by performance tier"
+        >
+          <option value="all">All Performance Tiers</option>
+          <option value="top">Top Performers (&ge;80%)</option>
+          <option value="satisfactory">Satisfactory (60-79%)</option>
+          <option value="attention">Action Required (&lt;60%)</option>
+          <option value="unscored">Unscored / Pending</option>
+        </select>
+      </div>
+    </div>
 
-    <!-- Service -->
-    <ng-container matColumnDef="service">
-      <th mat-header-cell *matHeaderCellDef>Service</th>
-      <td mat-cell *matCellDef="let item">
-        {{ item.service_rating }}
-      </td>
-    </ng-container>
+    <!-- Loading State -->
+    <div *ngIf="loading" class="loading-state">
+      <div class="loading-spinner"></div>
+      <p>Querying vendor performance records and calculating metrics from PostgreSQL...</p>
+    </div>
 
-    <!-- Status -->
-    <ng-container matColumnDef="status">
-      <th mat-header-cell *matHeaderCellDef>Status</th>
-      <td mat-cell *matCellDef="let item">
+    <!-- Portfolio Table -->
+    <div class="table-wrapper" *ngIf="!loading && filteredItems.length > 0">
+      <table class="enterprise-table">
+        <thead>
+          <tr>
+            <th>SUPPLIER / VENDOR</th>
+            <th>PERFORMANCE SCORE</th>
+            <th>ON-TIME FULFILLMENT</th>
+            <th>QUALITY RATING</th>
+            <th>COMPLETION RATE</th>
+            <th>RESPONSE TIME</th>
+            <th>TIER / STATUS</th>
+            <th class="actions-column">ACTIONS</th>
+          </tr>
+        </thead>
 
-        <mat-chip>
-          {{ getStatus(item.performance_score) }}
-        </mat-chip>
+        <tbody>
+          <tr *ngFor="let item of filteredItems">
+            <td>
+              <div class="vendor-cell">
+                <div class="vendor-avatar">{{ item.vendor.company_name.slice(0, 2).toUpperCase() }}</div>
+                <div class="vendor-meta">
+                  <strong class="vendor-name-text">{{ item.vendor.company_name }}</strong>
+                  <span class="vendor-sub-text">ID #{{ item.vendor.id }} • {{ item.vendor.category }}</span>
+                </div>
+              </div>
+            </td>
 
-      </td>
-    </ng-container>
+            <td>
+              <div class="score-cell" *ngIf="item.performance; else noScore">
+                <span class="vrip-badge" [ngClass]="getScoreColorClass(item.performance.performance_score)">
+                  {{ item.performance.performance_score }}%
+                </span>
+              </div>
+              <ng-template #noScore>
+                <span class="score-sub">Pending eval</span>
+              </ng-template>
+            </td>
 
-    <!-- Actions -->
-    <ng-container matColumnDef="actions">
+            <td>
+              <div class="fulfillment-cell" *ngIf="item.performance; else noFulfill">
+                <div class="fulfillment-top">
+                  <span class="bold-metric">
+                    {{
+                      (item.performance.on_time_deliveries + item.performance.delayed_deliveries) > 0
+                        ? (((item.performance.on_time_deliveries / (item.performance.on_time_deliveries + item.performance.delayed_deliveries)) * 100) | number:'1.0-1') + '%'
+                        : '0%'
+                    }}
+                  </span>
+                  <small class="sub-metric">{{ item.performance.on_time_deliveries }}/{{ item.performance.on_time_deliveries + item.performance.delayed_deliveries }} orders</small>
+                </div>
+                <div class="mini-track">
+                  <div
+                    class="mini-bar"
+                    [style.width.%]="(item.performance.on_time_deliveries + item.performance.delayed_deliveries) > 0 ? ((item.performance.on_time_deliveries / (item.performance.on_time_deliveries + item.performance.delayed_deliveries)) * 100) : 0"
+                  ></div>
+                </div>
+              </div>
+              <ng-template #noFulfill><span class="text-muted">—</span></ng-template>
+            </td>
 
-      <th mat-header-cell *matHeaderCellDef>
-        Actions
-      </th>
+            <td>
+              <div class="rating-cell" *ngIf="item.performance; else noRating">
+                <span class="rating-val">★ {{ item.performance.quality_rating }}</span>
+                <small class="sub-metric">Service: {{ item.performance.service_rating }}/5.0</small>
+              </div>
+              <ng-template #noRating><span class="text-muted">—</span></ng-template>
+            </td>
 
-      <td mat-cell *matCellDef="let item">
+            <td>
+              <span class="bold-metric" *ngIf="item.performance">
+                {{ item.performance.order_completion_rate }}%
+              </span>
+              <span class="text-muted" *ngIf="!item.performance">—</span>
+            </td>
 
-        <button
-          mat-icon-button
-          color="primary"
-          (click)="editPerformance(item.id!)">
+            <td>
+              <span class="bold-metric" *ngIf="item.performance">
+                {{ item.performance.response_time }} hrs
+              </span>
+              <span class="text-muted" *ngIf="!item.performance">—</span>
+            </td>
 
-          <mat-icon>edit</mat-icon>
+            <td>
+              <span class="vrip-badge" [ngClass]="getScoreColorClass(item.performance?.performance_score)">
+                {{ getPerformanceTier(item.performance?.performance_score) }}
+              </span>
+            </td>
 
-        </button>
+            <td class="actions-column">
+              <div class="row-actions">
+                <button
+                  type="button"
+                  class="action-button view"
+                  (click)="openOverview(item)"
+                  title="Quick overview"
+                >
+                  Overview
+                </button>
 
-        <button
-          mat-icon-button
-          color="warn"
-          (click)="deletePerformance(item.id!)">
+                <button
+                  type="button"
+                  class="action-button deep-dive"
+                  (click)="viewDetails(item)"
+                  title="View full supplier performance detail"
+                >
+                  Deep Dive
+                </button>
 
-          <mat-icon>delete</mat-icon>
+                <button
+                  type="button"
+                  class="action-button edit"
+                  *ngIf="item.performance"
+                  (click)="editPerformance(item.performance.id!)"
+                  title="Edit performance record"
+                >
+                  Edit
+                </button>
 
-        </button>
+                <button
+                  type="button"
+                  class="action-button log"
+                  *ngIf="!item.performance"
+                  (click)="navigateToAdd(item.vendor.id!)"
+                  title="Log performance metrics"
+                >
+                  + Log
+                </button>
 
-      </td>
+                <button
+                  type="button"
+                  class="action-button delete"
+                  *ngIf="item.performance"
+                  (click)="deletePerformance($event, item.performance.id!)"
+                  title="Delete performance record"
+                >
+                  Delete
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
-    </ng-container>
+    <!-- Empty State -->
+    <div class="empty-state" *ngIf="!loading && filteredItems.length === 0">
+      <div class="empty-icon">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M3 3v18h18"></path>
+          <rect x="7" y="12" width="3" height="6" rx=".5"></rect>
+          <rect x="12" y="8" width="3" height="10" rx=".5"></rect>
+          <rect x="17" y="5" width="3" height="13" rx=".5"></rect>
+        </svg>
+      </div>
 
-    <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <h3>{{ vendors.length === 0 ? 'No suppliers registered in platform' : 'No suppliers matching filter criteria' }}</h3>
+      <p>
+        {{
+          vendors.length === 0
+            ? 'Onboard active suppliers in the Vendors module to start tracking delivery fulfillment, quality, and SLA performance.'
+            : 'Try adjusting your search query or performance tier filter.'
+        }}
+      </p>
+    </div>
 
-    <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+  </section>
 
-  </table>
+  <!-- Quick Overview Modal Drawer -->
+  <div class="modal-overlay" *ngIf="selectedItem" (click)="closeOverview()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-header-info">
+          <div class="modal-eyebrow-row">
+            <span class="eyebrow">SUPPLIER PERFORMANCE PROFILE</span>
+            <span *ngIf="selectedItem.performance" class="tier-badge" [ngClass]="getScoreColorClass(selectedItem.performance.performance_score)">
+              {{ getPerformanceTier(selectedItem.performance.performance_score) }}
+            </span>
+          </div>
+          <h2>{{ selectedItem.vendor.company_name }}</h2>
+          <p>Vendor ID #{{ selectedItem.vendor.id }} • {{ selectedItem.vendor.category }} • {{ selectedItem.vendor.email }}</p>
+        </div>
+        <button type="button" class="close-btn" (click)="closeOverview()">✕</button>
+      </div>
 
-  <mat-paginator
-    [pageSize]="5"
-    [pageSizeOptions]="[5,10,20]"
-    showFirstLastButtons>
-  </mat-paginator>
+      <div class="modal-body">
+
+        <!-- Score Meter Grid -->
+        <div class="perf-metrics-grid" *ngIf="selectedItem.performance; else noPerfModal">
+          <div class="metric-box primary-metric-box">
+            <span class="metric-label">Performance Score</span>
+            <strong class="metric-val">{{ selectedItem.performance.performance_score }}%</strong>
+            <small class="metric-sub">Weighted operational rating</small>
+          </div>
+
+          <div class="metric-box">
+            <span class="metric-label">On-Time Deliveries</span>
+            <strong class="metric-val">{{ selectedItem.performance.on_time_deliveries }}</strong>
+            <small class="metric-sub">vs {{ selectedItem.performance.delayed_deliveries }} delayed</small>
+          </div>
+
+          <div class="metric-box">
+            <span class="metric-label">Quality Rating</span>
+            <strong class="metric-val">{{ selectedItem.performance.quality_rating }} / 5.0</strong>
+            <small class="metric-sub">Product accuracy</small>
+          </div>
+
+          <div class="metric-box">
+            <span class="metric-label">Service Rating</span>
+            <strong class="metric-val">{{ selectedItem.performance.service_rating }} / 5.0</strong>
+            <small class="metric-sub">Operational support</small>
+          </div>
+
+          <div class="metric-box">
+            <span class="metric-label">Order Completion</span>
+            <strong class="metric-val">{{ selectedItem.performance.order_completion_rate }}%</strong>
+            <small class="metric-sub">Fulfillment rate</small>
+          </div>
+
+          <div class="metric-box">
+            <span class="metric-label">Response Time</span>
+            <strong class="metric-val">{{ selectedItem.performance.response_time }} hrs</strong>
+            <small class="metric-sub">Issue resolution: {{ selectedItem.performance.issue_resolution_time }} hrs</small>
+          </div>
+        </div>
+
+        <ng-template #noPerfModal>
+          <div class="empty-modal-perf">
+            <p>No performance record logged yet for this supplier.</p>
+            <button type="button" class="primary-button" (click)="navigateToAdd(selectedItem.vendor.id!)">+ Log Initial Metrics</button>
+          </div>
+        </ng-template>
+
+        <!-- Recommendations Box if reliability exists -->
+        <div class="recommendations-box" *ngIf="selectedItem.reliability?.recommendations && selectedItem.reliability!.recommendations.length > 0">
+          <h3>Procurement Action Recommendations</h3>
+          <ul class="rec-list">
+            <li *ngFor="let rec of selectedItem.reliability!.recommendations">{{ rec }}</li>
+          </ul>
+        </div>
+
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="secondary-button" (click)="closeOverview()">Close</button>
+        <button type="button" class="primary-button" (click)="viewDetails(selectedItem)">Full Performance Details</button>
+      </div>
+    </div>
+  </div>
 
 </div>

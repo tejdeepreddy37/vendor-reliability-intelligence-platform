@@ -9,13 +9,17 @@ class CommunicationCreate(BaseModel):
     subject: str
     message: str
     communication_type: str
+    status: Optional[str] = "Sent"
+    communication_date: Optional[datetime] = None
 
 
 class CommunicationUpdate(BaseModel):
+    vendor_id: Optional[int] = None
     subject: Optional[str] = None
     message: Optional[str] = None
     communication_type: Optional[str] = None
     status: Optional[str] = None
+    communication_date: Optional[datetime] = None
 
 
 class CommunicationResponse(BaseModel):
@@ -24,8 +28,10 @@ class CommunicationResponse(BaseModel):
     subject: str
     message: str
     communication_type: str
-    status: str
-    communication_date: datetime
+    status: Optional[str] = "Sent"
+    communication_date: Optional[datetime] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
