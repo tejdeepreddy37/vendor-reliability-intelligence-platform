@@ -22,3 +22,11 @@ __pycache__/
 coverage/
 *.sqlite
 *.db
+
+# Local backup / recovery artifacts
+backup/
+recovery-login/
+frontend/ui-backup-*/
+frontend/ai-generated/
+frontend/src/app/features/auth/login/login.scss.backup
+backend/touch
